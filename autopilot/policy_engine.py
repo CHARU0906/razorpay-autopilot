@@ -94,11 +94,24 @@ def apply(
             reason=f"Re-plan count {replan_count} ≥ max {auto['max_replan_attempts']}",
         )
 
-    # --- high risk score → escalate ---
+    # --- high risk score → escalate (or stop if below min amount) ---
     if risk_score >= float(auto.get("high_risk_score", 0.85)):
         # Only escalate for customer-visible actions — silent retries are still automatic
         from strategies.common import SILENT_RETRIES
         if action_id not in SILENT_RETRIES and action_id != "stop":
+            min_amt = float(auto.get("min_amount_for_escalate_inr", 0.0))
+            if amount_inr < min_amt:
+                # Below threshold: 90 INR cost floor exceeds expected recovery even at
+                # high risk scores — fall back to stop rather than leak an EU-negative escalation.
+                return PolicyResult(
+                    tier="automatic",
+                    action_id="stop",
+                    params={},
+                    reason=(
+                        f"high_risk_score escalate suppressed: amount_inr {amount_inr:.0f} "
+                        f"< min_amount_for_escalate {min_amt:.0f} INR"
+                    ),
+                )
             return PolicyResult(
                 tier="requires-human",
                 action_id="escalate_to_merchant",
