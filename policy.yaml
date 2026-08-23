@@ -36,3 +36,9 @@ autonomy:
 
   # Minimum expected utility (INR) for Autopilot to act at all; below this → stop
   min_eu_to_act: 0.0
+
+  # Minimum transaction amount (INR) for escalate_to_merchant to be eligible.
+  # Derived from: C_floor(90 INR) / (P95_gt_non_recoverable(0.0384) * discount)
+  # = 2341.82 INR, rounded up to 2500.  Below this the 90 INR cost floor cannot
+  # be recovered even under the most optimistic GT draw for non_recoverable episodes.
+  min_amount_for_escalate_inr: 2500.0

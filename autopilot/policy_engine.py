@@ -20,9 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 _POLICY: dict | None = None
 
 
-def _load_policy() -> dict:
+def _load_policy(*, _reload: bool = False) -> dict:
     global _POLICY
-    if _POLICY is None:
+    if _POLICY is None or _reload:
         with (ROOT / "policy.yaml").open(encoding="utf-8") as f:
             _POLICY = yaml.safe_load(f)
     return _POLICY
@@ -62,6 +62,22 @@ def apply(
         )
 
     if action_id in auto.get("always_human", []):
+        # min_amount_for_escalate guard: below threshold, escalate is EU-negative
+        # for non_recoverable-like episodes (90 INR floor vs low base_p).
+        # Exempt: policy-engine-generated escalations from hard-stop failure codes
+        # (handled above) — those are mandatory regardless of amount.
+        min_amt = float(auto.get("min_amount_for_escalate_inr", 0.0))
+        if action_id == "escalate_to_merchant" and amount_inr < min_amt:
+            return PolicyResult(
+                tier="automatic",
+                action_id="stop",
+                params={},
+                reason=(
+                    f"escalate_to_merchant suppressed: amount_inr {amount_inr:.0f} "
+                    f"< min_amount_for_escalate {min_amt:.0f} INR; "
+                    f"90 INR cost floor cannot clear break-even at this amount"
+                ),
+            )
         return PolicyResult(
             tier="requires-human",
             action_id=action_id,

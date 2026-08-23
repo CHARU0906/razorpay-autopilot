@@ -21,7 +21,7 @@ from autopilot.strategist import StrategistResult, score_all_actions
 from autopilot.policy_engine import PolicyResult, apply as policy_apply
 from autopilot.action_agent import ActionResult, execute as action_execute
 from autopilot.outcome_agent import OutcomeResult, process as outcome_process
-from strategies.common import params_for
+from strategies.common import params_for, MANDATORY_ESCALATION_CODES
 from strategies.retry_model import load_bundle
 
 
@@ -40,6 +40,10 @@ class EpisodeTrace:
     stages: list[StageLog] = field(default_factory=list)
     final_action: str = "stop"
     replan_count: int = 0
+    # True when every escalation in this episode was compliance-driven
+    # (mandatory_escalation_codes path), not EU-optimising.
+    # Used by Phase 4 scorer for IRPI Option 2 denominator exclusion.
+    mandatory_escalation_count: int = 0
 
 
 class Autopilot:
@@ -92,6 +96,12 @@ class Autopilot:
             inferred_class=inv.inferred_class,
         )
         return pol.action_id, pol.params
+
+    def is_mandatory_escalation(self, observed: dict) -> bool:
+        """True if this episode's failure_code forces escalation regardless of EU.
+        Used by Phase 4 scorer for IRPI Option 2 denominator exclusion.
+        """
+        return (observed.get("failure_code") or "") in MANDATORY_ESCALATION_CODES
 
     # ------------------------------------------------------------------
     # Full episode runner (Phase 3 trace / Phase 4 bench)
@@ -202,6 +212,12 @@ class Autopilot:
             trace.n_actions += 1
             trace.final_action = pol.action_id
             trace.replan_count = int(state.get("replan_count") or 0)
+
+            # Track mandatory (compliance-driven) escalations for IRPI Option 2
+            failure_code = obs.get("failure_code") or ""
+            if (pol.action_id == "escalate_to_merchant"
+                    and failure_code in MANDATORY_ESCALATION_CODES):
+                trace.mandatory_escalation_count += 1
 
             if out.terminal:
                 trace.success = out.success
