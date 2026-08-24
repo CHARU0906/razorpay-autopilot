@@ -260,6 +260,12 @@ def _p_success(
             p_base = float(priors["hold_for_incident"]["incident_detected"])
         else:
             p_base = float(priors["hold_for_incident"]["default"])
+        # Class-specific corrections: hold_for_incident is only meaningful for
+        # regional_degradation. For other classes its GT base_p is near zero.
+        if inferred_class in {"expired_card", "auth_required", "non_recoverable"}:
+            p_base = 0.03   # GT range 0.00-0.04 for these classes
+        elif inferred_class == "insufficient_funds":
+            p_base = 0.08   # GT range 0.06-0.14
     elif action == "retry_alternate_route":
         p_base = float(priors["retry_alternate_route"])
         if inferred_class == "regional_degradation":
@@ -270,6 +276,14 @@ def _p_success(
             # route 24.8% of IF episodes to alternate_route (38.5% recovery) instead
             # of retry_7d/retry_72h (69–95% recovery). Bug 1 fix — calibrated on GT.
             p_base = 0.12
+        elif inferred_class == "expired_card":
+            # GT base_p for retry_alternate_route on expired_card episodes is ~0.025.
+            # The flat prior of 0.55 was a 24× overestimate — same Bug 1 pattern as IF.
+            # Calibrated on GT distribution (sim/generate.py expired_card range: 0.00-0.05).
+            p_base = 0.025
+        elif inferred_class in {"auth_required", "non_recoverable"}:
+            # Alt-route has near-zero GT base_p for these classes too.
+            p_base = 0.05
     else:
         p_base = float(priors.get(action, 0.30))
         # Scale by inferred class fit
