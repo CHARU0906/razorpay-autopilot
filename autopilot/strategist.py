@@ -283,7 +283,38 @@ def _p_success(
     else:
         contact_factor = 1.0
 
+    # Time-decay: apply the same decay the Action Agent will apply at execution.
+    # For retry-delay actions, delay_h and optimal_delay_h are known deterministically.
+    # This corrects the systematic over/under-estimation of retry probabilities that
+    # caused the Strategist to prefer retry_7d (high p_base, strong time-decay penalty)
+    # over retry_72h (lower p_base, zero time-decay penalty) on IF episodes.
+    if action in RETRY_DELAYS:
+        td = _time_decay_for_action(action, inferred_class, costs)
+        p_base *= td
+
     return max(0.0, min(0.98, p_base * fatigue * contact_factor))
+
+
+def _time_decay_for_action(action: str, inferred_class: str, costs: dict) -> float:
+    """Compute the time-decay the Action Agent will apply to this action.
+
+    Mirrors the formula in sim/generate.py p_eff() and bench/multistep.py compute_p_eff():
+        time_decay = exp(-lambda * |action_delay_h - optimal_delay_h| / 24)
+
+    The optimal_delay_h and lambda are per-class values from costs.yaml time_profile,
+    sourced from sim/generate.py time_profile() — they are public knowledge, not GT.
+    For ambiguous episodes we use the transient profile as a conservative default.
+    """
+    profile = costs.get("time_profile", {})
+    cls_key = inferred_class if inferred_class in profile else "transient"
+    cls_profile = profile.get(cls_key, {})
+
+    opt_h = float(cls_profile.get("optimal_delay_h", 1.0))
+    lam   = float(cls_profile.get("decay_lambda", 0.25))
+
+    delay_h = float(ACTION_DELAY_H.get(action) or 0.0)
+    td = math.exp(-lam * abs(delay_h - opt_h) / 24.0)
+    return td
 
 
 def _class_action_fit(inferred_class: str, action: str) -> float:
