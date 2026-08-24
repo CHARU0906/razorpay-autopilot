@@ -23,6 +23,7 @@ from autopilot.action_agent import ActionResult, execute as action_execute
 from autopilot.outcome_agent import OutcomeResult, process as outcome_process
 from strategies.common import params_for, MANDATORY_ESCALATION_CODES
 from strategies.retry_model import load_bundle
+from detect.degradation import DegradationDetector
 
 
 @dataclass
@@ -61,16 +62,20 @@ class Autopilot:
         retry_bundle=None,
         ground_truth_rows: list[dict] | None = None,
         rng: Optional[random.Random] = None,
+        detector: Optional[DegradationDetector] = None,
     ):
         self.detection_enabled = detection_enabled
         self.llm_enabled = llm_enabled
         self._bundle = retry_bundle if retry_bundle is not None else load_bundle()
-        # Ground truth is used ONLY by the Action Agent for outcome sampling.
         self._gt_by_id: dict[str, dict] = (
             {r["episode_id"]: r for r in ground_truth_rows}
             if ground_truth_rows else {}
         )
         self._rng = rng or random.Random()
+        # Phase 5: shared detector instance (None = detection disabled / 6b ablation)
+        self._detector: Optional[DegradationDetector] = (
+            detector if detection_enabled else None
+        )
         if not detection_enabled:
             self.name = "autopilot_no_detection"
 
@@ -81,7 +86,9 @@ class Autopilot:
     def decide(self, observed: dict, episode_state: dict) -> tuple[str, dict]:
         """First-action decision only (no execution, no ground truth access)."""
         inv = investigate(observed, episode_state, llm_enabled=self.llm_enabled)
-        # Degradation detection integration point — if disabled (6b), incident_detected=False
+        # Phase 5: enrich with live detector state before Strategist sees it
+        if self._detector is not None:
+            self._detector.enrich(inv, observed)
         incident_detected = inv.incident_active if self.detection_enabled else False
         strat = score_all_actions(
             observed, episode_state,
@@ -130,6 +137,9 @@ class Autopilot:
         while True:
             # Stage 1 — Investigator
             inv: InvestigatorResult = investigate(obs, state, llm_enabled=self.llm_enabled)
+            # Phase 5: enrich with live detector state
+            if self._detector is not None:
+                self._detector.enrich(inv, obs)
             incident_detected = inv.incident_active if self.detection_enabled else False
             trace.stages.append(StageLog(
                 stage="Investigator",
@@ -219,6 +229,10 @@ class Autopilot:
                     and failure_code in MANDATORY_ESCALATION_CODES):
                 trace.mandatory_escalation_count += 1
 
+            # Phase 5: feed outcome into detector after each resolved action
+            if self._detector is not None:
+                self._detector.record_outcome(obs, act.success, float(obs.get("sim_hour") or 0.0))
+
             if out.terminal:
                 trace.success = out.success
                 break
@@ -234,4 +248,5 @@ class AutopilotNoDetection(Autopilot):
 
     def __init__(self, **kwargs):
         kwargs["detection_enabled"] = False
+        kwargs.pop("detector", None)  # 6b never gets a detector
         super().__init__(**kwargs)

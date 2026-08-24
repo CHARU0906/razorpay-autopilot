@@ -193,7 +193,7 @@ def run_autopilot_episode(ap, obs: dict, gt: dict, *, rng: random.Random) -> dic
 
 # ── Strategy factory ──────────────────────────────────────────────────────────
 
-def make_strategy(name: str, gt_rows: list[dict], bundle):
+def make_strategy(name: str, gt_rows: list[dict], bundle, detector=None):
     import autopilot.policy_engine as pe
     pe._POLICY = None
     from strategies.no_recovery import NoRecovery
@@ -212,7 +212,8 @@ def make_strategy(name: str, gt_rows: list[dict], bundle):
     if name == "oracle":               return Oracle(gt_rows)
     if name == "autopilot":
         return Autopilot(detection_enabled=True, ground_truth_rows=gt_rows,
-                         retry_bundle=bundle, rng=random.Random(999))
+                         retry_bundle=bundle, rng=random.Random(999),
+                         detector=detector)
     if name == "autopilot_no_detection":
         return AutopilotNoDetection(ground_truth_rows=gt_rows, retry_bundle=bundle,
                                     rng=random.Random(998))
@@ -244,6 +245,12 @@ def run_seed(seed: int, strategy_names: list[str], cfg: dict,
     incidents = cfg["incidents"]
     max_acts  = int(cfg.get("max_actions", 6))
 
+    # Phase 5: create a shared detector for this seed run.
+    # Autopilot gets it; 6b does not.  The detector observes ALL episode outcomes
+    # in sim_hour order regardless of which strategy is under test.
+    from detect.degradation import DegradationDetector
+    detector = DegradationDetector()
+
     import yaml
     with open(ROOT / "costs.yaml") as f:
         costs = yaml.safe_load(f)
@@ -266,7 +273,9 @@ def run_seed(seed: int, strategy_names: list[str], cfg: dict,
     c_risk_map["escalate_to_merchant"] = costs["risk"]["risk_escalate_inr"]
     churn_inc = costs["churn_increment"]
 
-    strats = {name: make_strategy(name, gt_rows, bundle) for name in strategy_names}
+    strats = {name: make_strategy(name, gt_rows, bundle,
+                                  detector=(detector if name == "autopilot" else None))
+              for name in strategy_names}
 
     # Per-strategy, per-population accumulators
     acc = {name: defaultdict(lambda: {
@@ -294,6 +303,15 @@ def run_seed(seed: int, strategy_names: list[str], cfg: dict,
             else:
                 res = run_baseline_episode(strats[name], obs, gt, max_actions=max_acts,
                                            rng=ep_rng, incidents=incidents)
+
+            # Phase 5: feed every resolved episode into the shared detector.
+            # Use the same rng as autopilot so the observed outcome is consistent.
+            # Only record once (use autopilot run if available, else first strategy).
+            if name == strategy_names[0]:
+                ep_rng_det = random.Random(rng_base + seed * 31337 + ep_idx * 17
+                                           + hash("autopilot") % 1000)
+                detector.record_outcome(obs, res["recovered"],
+                                        float(obs.get("sim_hour") or 0.0))
 
             a = acc[name][pop]
             a["n"] += 1
@@ -363,13 +381,15 @@ def run_seed(seed: int, strategy_names: list[str], cfg: dict,
             "contacts_per_recovery": total["contacts"] / total["recovered"] if total["recovered"] else 0.0,
             "per_pop": per_pop,
         }
+    # Phase 5: attach detector stats to the result for latency reporting
+    result["_detector_stats"] = detector.detections
     return result
 
 
 # ── Aggregation and reporting ─────────────────────────────────────────────────
 
 def aggregate(seed_results: list[dict]) -> dict:
-    names = list(seed_results[0].keys())
+    names = [k for k in seed_results[0].keys() if not k.startswith("_")]
     agg = {}
     for name in names:
         per = [sr[name] for sr in seed_results]
@@ -511,6 +531,37 @@ def main(argv=None):
 
     agg = aggregate(seed_results)
     print_full_table(agg, args.strategies)
+
+    # Phase 5: detection latency report
+    all_detections = [d for sr in seed_results for d in sr.get("_detector_stats", [])]
+    if all_detections:
+        print(f"\n  PHASE 5 — Detection latency report ({len(all_detections)} detections across {len(args.seeds)} seeds)")
+        print(f"  {'cohort_key':20s}  {'det_sim_hour':>14s}  {'rate':>6s}  {'early':>6s}  {'late':>6s}  {'n_obs':>6s}")
+        print("  " + "-"*65)
+        for d in all_detections:
+            print(f"  {d['cohort_key']:20s}  {d['detection_sim_hour']:>14.1f}h  "
+                  f"{d['rate_at_detection']:>6.3f}  {d['early_mean']:>6.3f}  "
+                  f"{d['late_mean']:>6.3f}  {d['n_obs']:>6d}")
+        # Compare against known incident start hours from sim_config
+        print(f"\n  Known incident start hours (from sim_config.yaml):")
+        for inc_id, inc in cfg["incidents"].items():
+            print(f"    {inc_id}: start={inc['start_sim_hour']}h  cohort={inc['cohort']}")
+        # Latency = detection_sim_hour - incident_start_sim_hour (approximate, by cohort match)
+        print(f"\n  Latency estimate (detection_hour - incident_start_hour):")
+        inc_starts = {
+            "IN|rupay|HDFC": 240.0,   # INC-1
+            "xb|route_b":   300.0,   # INC-2
+            "upi|PAYTM":    360.0,   # INC-3
+        }
+        for d in all_detections:
+            start = inc_starts.get(d["cohort_key"])
+            if start is not None:
+                latency = d["detection_sim_hour"] - start
+                print(f"    {d['cohort_key']:20s}  detected at h{d['detection_sim_hour']:.1f}  "
+                      f"incident started h{start:.0f}  latency={latency:+.1f}h")
+    else:
+        print(f"\n  Phase 5: no incidents detected across {len(args.seeds)} seeds.")
+        print(f"  Detection-gain cannot be measured until detector fires.")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps({
