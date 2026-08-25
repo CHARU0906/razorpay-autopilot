@@ -56,7 +56,37 @@ const METRICS = [
   },
 ]
 
-export default function MetricStrip() {
+export default function MetricStrip({ slim = false }) {
+  if (slim) {
+    // Compact single-row status bar for hero-map layout
+    return (
+      <div
+        className="flex items-center justify-between px-4 py-1.5 border-b border-border shrink-0"
+        style={{ background: '#141B26' }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-signal-blue" />
+          <span className="font-sans text-[10px] font-medium text-muted tracking-widest uppercase">
+            Razorpay Autopilot
+          </span>
+        </div>
+        <div className="flex items-center gap-5">
+          {METRICS.slice(0, 5).map((m, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <span className="font-sans text-[9px] text-muted uppercase tracking-wider">{m.label}:</span>
+              <span className={`font-mono text-[11px] font-semibold ${m.color}`}>{m.value}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5 ml-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
+            <span className="font-mono text-[10px] text-green">LIVE</span>
+            <span className="font-mono text-[10px] text-muted ml-1">seeds 1–10</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="border-b border-border">
       {/* Header bar */}

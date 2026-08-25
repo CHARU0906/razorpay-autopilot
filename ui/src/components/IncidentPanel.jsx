@@ -55,7 +55,7 @@ function TrajectoryBar({ points, currentH, startH }) {
   )
 }
 
-function GatedEpisodeCard({ episode, onAction }) {
+export function GatedEpisodeCard({ episode, onAction }) {
   const [state, setState] = useState('pending') // pending | processing | approved | rejected
   const [result, setResult] = useState(null)
 
@@ -196,7 +196,7 @@ function GatedEpisodeCard({ episode, onAction }) {
   )
 }
 
-function IncidentCard({ incident }) {
+export function IncidentCard({ incident }) {
   const elapsed = incident.sim_hour - incident.incident_start_h
   const pctElapsed = Math.min(elapsed / incident.incident_window_h, 1)
 
