@@ -304,13 +304,21 @@ def run_seed(seed: int, strategy_names: list[str], cfg: dict,
                 res = run_baseline_episode(strats[name], obs, gt, max_actions=max_acts,
                                            rng=ep_rng, incidents=incidents)
 
-            # Phase 5: feed every resolved episode into the shared detector.
-            # Use the same rng as autopilot so the observed outcome is consistent.
-            # Only record once (use autopilot run if available, else first strategy).
+            # Phase 5: feed observed outcome into the shared detector ONCE per episode,
+            # using a dedicated independent RNG stream (seed 99991*seed + ep_idx) that
+            # is isolated from every strategy's ep_rng.  This ensures all strategies
+            # are scored on identical episode draws.
+            # The detector observes what would happen if the GT-optimal action were
+            # executed — i.e. the underlying payment system's success rate for this
+            # cohort, independent of which strategy is under test.
             if name == strategy_names[0]:
-                ep_rng_det = random.Random(rng_base + seed * 31337 + ep_idx * 17
-                                           + hash("autopilot") % 1000)
-                detector.record_outcome(obs, res["recovered"],
+                det_rng = random.Random(rng_base + seed * 99991 + ep_idx)
+                opt_action = gt.get("optimal_action", "retry_1h")
+                opt_p = compute_p_eff(opt_action, gt, attempt_k=0, contacts=0,
+                                      sim_hour=float(obs.get("sim_hour") or 0.0),
+                                      incidents=incidents)
+                det_outcome = det_rng.random() < opt_p
+                detector.record_outcome(obs, det_outcome,
                                         float(obs.get("sim_hour") or 0.0))
 
             a = acc[name][pop]
