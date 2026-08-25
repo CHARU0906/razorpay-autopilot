@@ -28,6 +28,7 @@ export default function App() {
   const [simHour,       setSimHour]       = useState(0)
   const [playing,       setPlaying]       = useState(false)
   const [logOpen,       setLogOpen]       = useState(false)
+  const [resetKey,      setResetKey]      = useState(0)  // increment to remount RouteMap
 
   const lastTsRef  = useRef(null)
   const simHourRef = useRef(simHour)
@@ -56,6 +57,16 @@ export default function App() {
   const jumpTo = useCallback((h, autoPlay = true) => {
     setSimHour(h)
     if (autoPlay) setPlaying(true)
+  }, [])
+
+  const handleReset = useCallback(() => {
+    setPlaying(false)
+    setSimHour(0)
+    setApprovalLog([])
+    setSelectedRoute(null)
+    setLogOpen(false)
+    setResetKey(k => k + 1)   // remount RouteMap → clears all ring state
+    lastTsRef.current = null
   }, [])
 
   const handleApprovalAction = useCallback(({ episode_id, decision, result }) => {
@@ -92,6 +103,16 @@ export default function App() {
           style={{ color: playing ? '#5B8DEF' : '#6B7A90', minWidth: 52 }}
         >
           {playing ? '⏸ LIVE' : '▶ PLAY'}
+        </button>
+
+        {/* Reset */}
+        <button
+          onClick={handleReset}
+          className="font-mono text-[10px] px-2 py-1 border border-border hover:border-red transition-colors shrink-0"
+          style={{ color: '#6B7A90' }}
+          title="Reset all demo state to t=0"
+        >
+          ↺ RESET
         </button>
 
         {/* Scrubber */}
@@ -157,9 +178,10 @@ export default function App() {
       {/* ── Main body ── */}
       <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
 
-        {/* Hero: network map */}
+        {/* Hero: network map — key=resetKey forces remount on reset, clearing ring state */}
         <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>
           <RouteMap
+            key={resetKey}
             simHour={simHour}
             onNodeClick={handleNodeClick}
             selectedId={selectedRoute?.id}
