@@ -1,30 +1,56 @@
 /**
- * RouteMap — Checkpoint 1: static layout + three visual states.
- * No animation yet. previewState controls which sim_hour to render.
+ * RouteMap — Live Interactive SVG Payment Network.
+ * Renders nodes, edges, degradation rings, and live animated particle streams when playing.
  *
  * Props:
- *   simHour      {number}  current simulated hour (drives state)
- *   onNodeClick  {fn}      called with route object on node click
- *   selectedId   {string}  currently selected node id
+ *   simHour      {number}   current simulated hour
+ *   isPlaying    {boolean}  whether simulation is active (triggers particle flow)
+ *   onNodeClick  {fn}       called with route object on node click
+ *   selectedId   {string}   currently selected node id
  */
 import React from 'react'
-import { ROUTES, HUB, CX, CY, routeState } from '../data/routeData.js'
+import { ROUTES, HUB, routeState } from '../data/routeData.js'
 
 const NODE_R   = 18    // normal node radius
 const HUB_R    = 10    // hub radius
 const COLORS   = {
-  healthy:  '#5B8DEF',
-  degrading: '#F5A623',
-  detected:  '#E5484D',
+  healthy:    '#5B8DEF',
+  degrading:  '#F5A623',
+  detected:   '#E5484D',
   healthy_bg: '#141B26',
-  muted:     '#6B7A90',
-  text:      '#E8ECF1',
-  border:    '#1E2A3A',
+  muted:      '#6B7A90',
+  text:       '#E8ECF1',
+  border:     '#1E2A3A',
 }
 
-// Edge stroke width interpolation: 1.5px (healthy) → 0.6px (full incident)
+// Edge stroke width interpolation
 function edgeWidth(degradation = 0) {
   return (1.5 - degradation * 0.9).toFixed(2)
+}
+
+function AnimatedEdgePulse({ route, rs, index }) {
+  const isHealthy = rs.state === 'healthy'
+  const pulseColor = isHealthy ? COLORS.healthy : rs.color
+  const speed = 1.2 + (index % 3) * 0.4
+
+  return (
+    <g>
+      <circle r="3" fill={pulseColor} opacity="0.85">
+        <animateMotion
+          path={`M ${HUB.x} ${HUB.y} L ${route.x} ${route.y}`}
+          dur={`${speed}s`}
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle r="1.5" fill="#FFFFFF" opacity="0.9">
+        <animateMotion
+          path={`M ${HUB.x} ${HUB.y} L ${route.x} ${route.y}`}
+          dur={`${speed}s`}
+          repeatCount="indefinite"
+        />
+      </circle>
+    </g>
+  )
 }
 
 function NodeCircle({ route, rs, isSelected, onClick }) {
@@ -32,19 +58,13 @@ function NodeCircle({ route, rs, isSelected, onClick }) {
   const isDegrading = rs.state === 'degrading'
   const isDetected  = rs.state === 'detected'
 
-  const borderColor = isHealthy
-    ? COLORS.healthy
-    : rs.color
-
-  const fillColor = isDetected
-    ? `${COLORS.detected}14`    // 8% opacity red fill
-    : COLORS.healthy_bg
-
+  const borderColor = isHealthy ? COLORS.healthy : rs.color
+  const fillColor   = isDetected ? `${COLORS.detected}18` : COLORS.healthy_bg
   const borderWidth = isDetected ? 2 : 1
 
   return (
     <g
-      className="cursor-pointer"
+      className="cursor-pointer group"
       onClick={() => onClick(route)}
       role="button"
       aria-label={route.label}
@@ -56,21 +76,23 @@ function NodeCircle({ route, rs, isSelected, onClick }) {
           r={NODE_R + 6}
           fill="none"
           stroke={borderColor}
-          strokeWidth="1"
-          strokeOpacity="0.4"
-          strokeDasharray="3 2"
+          strokeWidth="1.5"
+          strokeOpacity="0.8"
+          strokeDasharray="4 2"
         />
       )}
 
-      {/* Detection ring — static snapshot shows ring at full expansion */}
+      {/* Detection ring */}
       {isDetected && (
         <circle
           cx={route.x} cy={route.y}
-          r={NODE_R + 16}
+          r={NODE_R + 14}
           fill="none"
           stroke={COLORS.detected}
-          strokeWidth="1"
-          strokeOpacity="0.25"
+          strokeWidth="1.5"
+          strokeOpacity="0.4"
+          className="animate-ping"
+          style={{ transformOrigin: `${route.x}px ${route.y}px` }}
         />
       )}
 
@@ -83,12 +105,12 @@ function NodeCircle({ route, rs, isSelected, onClick }) {
         strokeWidth={borderWidth}
       />
 
-      {/* Degradation fill arc (shows how far into incident) */}
+      {/* Degradation fill arc */}
       {(isDegrading || isDetected) && rs.progress > 0 && (
         <circle
           cx={route.x} cy={route.y}
           r={NODE_R - 3}
-          fill={`${rs.color}20`}
+          fill={`${rs.color}25`}
           stroke="none"
         />
       )}
@@ -135,7 +157,7 @@ function NodeCircle({ route, rs, isSelected, onClick }) {
         </text>
       )}
 
-      {/* Healthy nodes: show small checkmark-style indicator */}
+      {/* Healthy nodes indicator */}
       {isHealthy && (
         <text
           x={route.x}
@@ -143,7 +165,7 @@ function NodeCircle({ route, rs, isSelected, onClick }) {
           textAnchor="middle"
           fontFamily="IBM Plex Mono, monospace"
           fontSize="9"
-          fill={`${COLORS.healthy}70`}
+          fill={`${COLORS.healthy}80`}
         >
           ✓
         </text>
@@ -169,14 +191,7 @@ function Edge({ route, rs }) {
   )
 }
 
-// Static preview controls — lets us show the three states side by side
-const PREVIEW_HOURS = {
-  healthy:   0,       // before any incident
-  degrading: 247,     // INC-1 at step 2 (9h in, 87% → amber)
-  detected:  250,     // INC-1 past detection latency (10h in, ~85%)
-}
-
-export default function RouteMap({ simHour = 0, onNodeClick = () => {}, selectedId = null }) {
+export default function RouteMap({ simHour = 0, isPlaying = false, onNodeClick = () => {}, selectedId = null }) {
   return (
     <div
       className="flex flex-col"
@@ -188,9 +203,9 @@ export default function RouteMap({ simHour = 0, onNodeClick = () => {}, selected
         style={{ background: '#141B26' }}
       >
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-signal-blue" />
+          <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-green animate-pulse' : 'bg-signal-blue'}`} />
           <span className="font-sans text-xs font-medium text-muted uppercase tracking-wider">
-            Payment Route Network
+            Payment Route Network {isPlaying && <span className="text-green text-[10px] ml-1">(LIVE SIMULATION ACTIVE)</span>}
           </span>
         </div>
         <div className="flex items-center gap-4">
@@ -207,12 +222,12 @@ export default function RouteMap({ simHour = 0, onNodeClick = () => {}, selected
             <span className="font-mono text-[10px] text-muted">incident detected</span>
           </div>
           <span className="font-mono text-[10px] text-muted">
-            sim_h <span className="text-text">{simHour.toFixed(0)}</span>
+            sim_h <span className="text-signal-blue font-semibold">{simHour.toFixed(1)}</span>
           </span>
         </div>
       </div>
 
-      {/* SVG canvas — flex-1 fills exact remaining height, preserveAspectRatio centers content */}
+      {/* SVG canvas */}
       <div
         className="flex-1"
         style={{ position: 'relative', minHeight: 0, overflow: 'hidden' }}
@@ -222,7 +237,7 @@ export default function RouteMap({ simHour = 0, onNodeClick = () => {}, selected
           preserveAspectRatio="xMidYMid meet"
           style={{ width: '100%', height: '100%', display: 'block' }}
         >
-          {/* Subtle grid backdrop */}
+          {/* Grid backdrop */}
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
               <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1E2A3A" strokeWidth="0.5" strokeOpacity="0.4"/>
@@ -230,14 +245,20 @@ export default function RouteMap({ simHour = 0, onNodeClick = () => {}, selected
           </defs>
           <rect width="800" height="580" fill="url(#grid)" />
 
-          {/* Edges — drawn before nodes so nodes sit on top */}
+          {/* Edges */}
           {ROUTES.map(route => {
             const rs = routeState(route, simHour)
             return <Edge key={`edge-${route.id}`} route={route} rs={rs} />
           })}
 
+          {/* Live particle streams when simulation is playing */}
+          {isPlaying && ROUTES.map((route, idx) => {
+            const rs = routeState(route, simHour)
+            return <AnimatedEdgePulse key={`pulse-${route.id}`} route={route} rs={rs} index={idx} />
+          })}
+
           {/* Hub */}
-          <circle cx={HUB.x} cy={HUB.y} r={HUB_R} fill="#1E2A3A" stroke="#2E3D52" strokeWidth="1" />
+          <circle cx={HUB.x} cy={HUB.y} r={HUB_R} fill="#1E2A3A" stroke="#5B8DEF" strokeWidth="1.5" />
           <text
             x={HUB.x} y={HUB.y + HUB_R + 12}
             textAnchor="middle"

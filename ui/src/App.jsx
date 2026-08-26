@@ -5,37 +5,37 @@ import RouteMap from './components/RouteMap.jsx'
 import NodeSidePanel from './components/NodeSidePanel.jsx'
 import LlmReasoningPanel from './components/LlmReasoningPanel.jsx'
 
-const SIM_SPEED = 3      // sim-hours per real second
-const SIM_MAX   = 430
+const SIM_MAX = 430
 
 // T-2h before each incident's detection fires
-// INC-1 detection at start(240) + latency(7.5) = 247.5 → T-minus = 245.5
 const DEMO_JUMPS = [
-  { label: '▶ Demo: INC-1',  h: 245.5, hot: true,  tip: 'T−2h before INC-1 detection fires' },
-  { label: '▶ Demo: INC-2',  h: 307.7, hot: false, tip: 'T−2h before INC-2 detection fires' },
-  { label: '▶ Demo: INC-3',  h: 365.6, hot: false, tip: 'T−2h before INC-3 detection fires' },
+  { label: '▶ Demo: INC-1', h: 245.5, hot: true,  tip: 'INC-1: RuPay/HDFC Degradation (94%→82%)' },
+  { label: '▶ Demo: INC-2', h: 307.7, hot: false, tip: 'INC-2: Cross-Border Route B (96%→84%)' },
+  { label: '▶ Demo: INC-3', h: 365.6, hot: false, tip: 'INC-3: UPI AutoPay Paytm (93%→85%)' },
 ]
 
 const NAV_JUMPS = [
-  { label: 'h=0',   h: 0   },
-  { label: 'INC-1', h: 241 },
-  { label: 'INC-2', h: 301 },
-  { label: 'INC-3', h: 361 },
+  { label: 'h=0 (Nominal)', h: 0   },
+  { label: 'INC-1 (h=241)', h: 241 },
+  { label: 'INC-2 (h=301)', h: 301 },
+  { label: 'INC-3 (h=361)', h: 361 },
 ]
 
 export default function App() {
   const [approvalLog,   setApprovalLog]   = useState([])
   const [selectedRoute, setSelectedRoute] = useState(null)
   const [simHour,       setSimHour]       = useState(0)
+  const [simSpeed,      setSimSpeed]      = useState(10) // 10 sim-hours per real second
   const [playing,       setPlaying]       = useState(false)
   const [logOpen,       setLogOpen]       = useState(false)
   const [llmPanelOpen,  setLlmPanelOpen]  = useState(false)
-  const [resetKey,      setResetKey]      = useState(0)  // increment to remount RouteMap
-
+  const [resetKey,      setResetKey]      = useState(0)
 
   const lastTsRef  = useRef(null)
   const simHourRef = useRef(simHour)
+  const simSpeedRef = useRef(simSpeed)
   useEffect(() => { simHourRef.current = simHour }, [simHour])
+  useEffect(() => { simSpeedRef.current = simSpeed }, [simSpeed])
 
   // rAF sim clock
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function App() {
       if (lastTsRef.current !== null) {
         const dtSec = Math.min((ts - lastTsRef.current) / 1000, 0.1)
         setSimHour(h => {
-          const next = h + dtSec * SIM_SPEED
+          const next = h + dtSec * simSpeedRef.current
           if (next >= SIM_MAX) { setPlaying(false); return 0 }
           return next
         })
@@ -56,6 +56,17 @@ export default function App() {
     rafId = requestAnimationFrame(tick)
     return () => { cancelAnimationFrame(rafId); lastTsRef.current = null }
   }, [playing])
+
+  const togglePlay = useCallback(() => {
+    setPlaying(prev => {
+      const next = !prev
+      if (next && simHour < 10) {
+        // Auto-jump to active incident demo if starting from h=0 so live activity is immediately visible
+        setSimHour(245.5)
+      }
+      return next
+    })
+  }, [simHour])
 
   const jumpTo = useCallback((h, autoPlay = true) => {
     setSimHour(h)
@@ -68,7 +79,7 @@ export default function App() {
     setApprovalLog([])
     setSelectedRoute(null)
     setLogOpen(false)
-    setResetKey(k => k + 1)   // remount RouteMap → clears all ring state
+    setResetKey(k => k + 1)
     lastTsRef.current = null
   }, [])
 
@@ -86,6 +97,10 @@ export default function App() {
     setSelectedRoute(prev => prev?.id === route.id ? null : route)
   }, [])
 
+  const toggleSpeed = useCallback(() => {
+    setSimSpeed(s => (s === 3 ? 10 : s === 10 ? 25 : 3))
+  }, [])
+
   return (
     <div
       className="flex flex-col"
@@ -96,24 +111,33 @@ export default function App() {
 
       {/* ── Control bar ── */}
       <div
-        className="flex items-center gap-2 px-4 py-1.5 border-b border-border shrink-0"
+        className="flex items-center gap-2 px-4 py-1.5 border-b border-border shrink-0 overflow-x-auto"
         style={{ background: '#141B26' }}
       >
         {/* Play / pause */}
         <button
-          onClick={() => setPlaying(p => !p)}
-          className="font-mono text-[10px] px-2 py-1 border border-border hover:border-signal-blue transition-colors shrink-0"
-          style={{ color: playing ? '#5B8DEF' : '#6B7A90', minWidth: 52 }}
+          onClick={togglePlay}
+          className="font-mono text-[10px] px-2.5 py-1 border border-border hover:border-signal-blue transition-colors shrink-0 flex items-center gap-1.5"
+          style={{ color: playing ? '#5B8DEF' : '#E8ECF1', background: playing ? '#5B8DEF1E' : '#141B26' }}
+          title={playing ? 'Pause simulation clock' : 'Play simulation clock (auto-starts at INC-1 if h=0)'}
         >
-          {playing ? '⏸ LIVE' : '▶ PLAY'}
+          <span>{playing ? '⏸ LIVE PLAYING' : '▶ START LIVE'}</span>
+        </button>
+
+        {/* Speed toggle */}
+        <button
+          onClick={toggleSpeed}
+          className="font-mono text-[9px] px-1.5 py-1 border border-border hover:border-signal-blue transition-colors shrink-0 text-muted"
+          title="Click to cycle speed: 3x -> 10x -> 25x"
+        >
+          SPEED: <span className="text-signal-blue font-semibold">{simSpeed}h/s</span>
         </button>
 
         {/* Reset */}
         <button
           onClick={handleReset}
-          className="font-mono text-[10px] px-2 py-1 border border-border hover:border-red transition-colors shrink-0"
-          style={{ color: '#6B7A90' }}
-          title="Reset all demo state to t=0"
+          className="font-mono text-[9px] px-2 py-1 border border-border hover:border-red transition-colors shrink-0 text-muted"
+          title="Reset simulation to h=0"
         >
           ↺ RESET
         </button>
@@ -123,11 +147,11 @@ export default function App() {
           type="range" min="0" max={SIM_MAX} step="0.5"
           value={simHour}
           onChange={e => { setPlaying(false); setSimHour(Number(e.target.value)) }}
-          className="flex-1"
+          className="flex-1 min-w-[100px]"
           style={{ accentColor: '#5B8DEF' }}
         />
-        <span className="font-mono text-[11px] shrink-0 w-24 text-right" style={{ color: '#E8ECF1' }}>
-          sim_h <span style={{ color: '#5B8DEF' }}>{simHour.toFixed(1)}</span>
+        <span className="font-mono text-[11px] shrink-0 w-24 text-right text-text">
+          sim_h <span className="text-signal-blue font-semibold">{simHour.toFixed(1)}</span>
         </span>
 
         {/* Separator */}
@@ -157,8 +181,8 @@ export default function App() {
           <button
             key={label}
             onClick={() => { setPlaying(false); setSimHour(h) }}
-            className="font-mono text-[9px] px-1.5 py-0.5 border border-border hover:border-signal-blue transition-colors shrink-0"
-            style={{ color: '#6B7A90' }}
+            className="font-mono text-[9px] px-1.5 py-0.5 border border-border hover:border-signal-blue transition-colors shrink-0 text-muted"
+            title={`Jump clock to sim_h=${h}`}
           >
             {label}
           </button>
@@ -172,7 +196,7 @@ export default function App() {
           onClick={() => setLogOpen(o => !o)}
           className="font-mono text-[9px] px-2 py-1 border border-border hover:border-signal-blue transition-colors shrink-0"
           style={{ color: logOpen ? '#5B8DEF' : '#6B7A90' }}
-          title="Toggle Action Log"
+          title="Toggle AI Action Log Feed"
         >
           LOG {logOpen ? '▼' : '▶'}
         </button>
@@ -185,7 +209,7 @@ export default function App() {
           onClick={() => setLlmPanelOpen(o => !o)}
           className="font-mono text-[9px] px-2 py-1 border border-signal-blue/50 hover:border-signal-blue transition-colors shrink-0 flex items-center gap-1"
           style={{ color: llmPanelOpen ? '#5B8DEF' : '#E8ECF1', background: llmPanelOpen ? '#5B8DEF1A' : 'transparent' }}
-          title="Toggle LLM Reasoning Transparency Panel"
+          title="Toggle LLM Reasoning Transparency Panel (Fix 5: ep_1_216)"
         >
           <span>🧠 LLM (SIMULATED)</span>
         </button>
@@ -194,11 +218,12 @@ export default function App() {
       {/* ── Main body ── */}
       <div className="flex flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
 
-        {/* Hero: network map — key=resetKey forces remount on reset, clearing ring state */}
+        {/* Hero: network map — key=resetKey forces remount on reset */}
         <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>
           <RouteMap
             key={resetKey}
             simHour={simHour}
+            isPlaying={playing}
             onNodeClick={handleNodeClick}
             selectedId={selectedRoute?.id}
           />
@@ -224,15 +249,14 @@ export default function App() {
           </div>
         )}
 
-        {/* LLM Reasoning Modal Overlay */}
+        {/* LLM Reasoning Modal Overlay — fully scrollable */}
         {llmPanelOpen && (
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
             <LlmReasoningPanel onClose={() => setLlmPanelOpen(false)} />
           </div>
         )}
 
       </div>
     </div>
-
   )
 }
