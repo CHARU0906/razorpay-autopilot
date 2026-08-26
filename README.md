@@ -5,6 +5,14 @@ When a recurring payment fails, Autopilot decides *whether* to intervene, *what*
 *executes*, *verifies the outcome*, and *replans* if it fails — across the full 13-action
 space from silent retries to escalation, priced by an explicit utility function.
 
+> **Simulation disclaimer:** This project is designed around Razorpay-like payment flows
+> and evaluated entirely within a controlled synthetic simulation environment.
+> **No production Razorpay APIs or live transaction data were used.** The simulator
+> generates realistic payment-failure episodes with hidden ground truth, used to benchmark
+> Autopilot against industry-representative baselines.
+> All figures in this document and demo are derived from a 3,000-episode synthetic
+> benchmark (10 evaluation seeds), not real transaction data.
+
 ---
 
 ## The problem
@@ -38,9 +46,12 @@ Start the UI locally: see [Quickstart](#quickstart).
 
 ## Benchmark results
 
+> All figures below are derived from the synthetic simulation benchmark. They are not
+> real transaction values.
+
 **Phase 4+5 canonical — mean ± std, 10 evaluation seeds (1–10), multi-step Oracle**
 
-### Table 1 — Recovery & Revenue
+### Table 1 — Simulated Recovery & Revenue
 
 | Strategy | Recovery % | Gross Rev (INR) | % of Oracle | Lift vs Smart-Dunning |
 |---|---|---|---|---|
@@ -72,10 +83,20 @@ Autopilot trails Rule-Based by −4.1% on gross recovery. See [Known limitation]
 | **Autopilot** | **0.0 ± 0.0** | **0.0** | **0.463** |
 | Oracle `[CEILING]` | 0.0 ± 0.0 | 0.0 | 0.550 |
 
-UIR = unnecessary intervention rate: customer-visible actions fired on episodes where a
-zero-friction action would have done as well, or where the episode was unrecoverable.
-Autopilot's 0.0% UIR means it never chose a customer-visible action when a silent option
-was equally effective.
+**UIR (Unnecessary Intervention Rate)** = the percentage of customer-visible recovery
+actions (e.g. re-authentication requests, payment-method-update prompts) that, evaluated
+against ground truth, had negative expected value — meaning the action created customer
+friction with no realistic chance of recovering the payment.
+
+Autopilot's Policy Engine only escalates to customer-visible actions when the
+Strategist's expected utility is positive; silent/backend actions (retries, route holds)
+are excluded from this metric since they don't create customer friction.
+
+**0.0% does not mean Autopilot took no actions.** It made approximately 8,170 total
+interventions per seed, most of them silent retries. It means every customer-facing ask
+(re-auth request, payment method update, dunning notification) was backed by a positive
+expected-value calculation against the simulated ground truth — none were fired on
+episodes where the simulator's probability table gave them no realistic path to recovery.
 
 ### Phase 5 — Degradation detection latency
 

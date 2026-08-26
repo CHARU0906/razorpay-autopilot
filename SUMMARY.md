@@ -8,6 +8,9 @@ methodological choice and the full audit trail.
 
 ## Why this isn't a standard retry-optimization benchmark
 
+> **Scope note:** All results in this document are from a controlled synthetic simulation.
+> No production Razorpay APIs or live transaction data were used at any point.
+
 Most published work on subscription payment recovery optimises retry timing —
 when to fire the next attempt. That's what "Learned Smart-Retry" and
 "Smart-Dunning" (the two trained baselines here) do. Autopilot treats recovery
