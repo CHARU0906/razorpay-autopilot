@@ -119,7 +119,7 @@ Both choices are defensible.
 
 ## Why Rule-Based leads on two populations
 
-After all calibration fixes, Autopilot trails Rule-Based by −4.1% overall,
+After all calibration fixes, Autopilot trails Rule-Based by −5.0% on gross revenue (74.4% vs 78.2% recovery rate),
 driven by `insufficient_funds` (81.5% vs 94.3%) and `expired_card` (77.9% vs
 95.4%).
 

@@ -60,19 +60,19 @@ Start the UI locally: see [Quickstart](#quickstart).
 | Learned Smart-Retry | 48.5 ± 0.7 | 157,668,884 ± 8,134,600 | 55.4% | −28.6% |
 | Smart-Dunning *(headline baseline)* | 66.4 ± 1.0 | 220,866,149 ± 13,400,086 | 77.6% | +0.0% |
 | Autopilot-no-detect `[ABLATION]` | 73.2 ± 0.6 | 252,165,900 ± 11,570,526 | 88.6% | +14.2% |
-| **Autopilot** | **74.5 ± 0.4** | **254,842,959 ± 11,426,424** | **89.6%** | **+18.3%** |
+| **Autopilot** | **74.4 ± 0.4** | **254,842,959 ± 11,426,424** | **89.6%** | **+15.4%** |
 | Rule-Based | 78.2 ± 0.4 | 268,282,158 ± 11,000,511 | 94.3% | +21.5% |
 | Oracle `[CEILING]` | 82.6 ± 0.3 | 284,527,486 ± 12,437,688 | 100.0% | +28.8% |
 
 ### Lift decomposition (D1 — Decision log)
 
 ```
-Autopilot vs Smart-Dunning     +18.3%   (+₹34.0M mean)
+Autopilot vs Smart-Dunning     +15.4%   (+₹34.0M mean)
 ├── Orchestration-gain (6b vs SD)  +14.2%   full action space + explicit utility
-└── Detection-gain (AP vs 6b)       +1.8%   cross-episode degradation detection
+└── Detection-gain (AP vs 6b)       +1.2%   cross-episode degradation detection
 ```
 
-Autopilot trails Rule-Based by −4.1% on gross recovery. See [Known limitation](#known-limitation).
+Autopilot trails Rule-Based by −5.0% on gross revenue (−3.8pp on raw recovery). See [Known limitation](#known-limitation).
 
 ### Table 2 — UIR, Wasted Attempts, Contacts
 
@@ -219,7 +219,7 @@ showed max 0.5pp delta on any non-regional population — confirming Phase 5 cha
 
 ## Known limitation
 
-**Autopilot trails Rule-Based by −4.1% on gross recovery rate (78.2% vs 74.5%).**
+**Autopilot trails Rule-Based by −5.0% on gross revenue (74.4% vs 78.2% recovery rate).**
 
 This gap is concentrated in two populations:
 
@@ -237,8 +237,8 @@ This gap is concentrated in two populations:
   due to high-risk-score policy gates.
 
 On every other metric Autopilot leads: UIR (0.0% vs 9.2%), contacts per recovery (0.463
-vs 0.585), lift over the strongest trained baseline (+18.3% vs Smart-Dunning), and
-90.3% of the Oracle ceiling vs Rule-Based's 94.3%.
+vs 0.585), lift over the strongest trained baseline (+15.4% vs Smart-Dunning), and
+89.6% of the Oracle ceiling vs Rule-Based's 94.3%.
 
 The Rule-Based advantage on these two populations is a property of GT construction (single
 dominant optimal per failure code), not a generalizable real-world result. A real

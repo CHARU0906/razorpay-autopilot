@@ -23,22 +23,26 @@ function simulateActionAgent(episode, approved) {
 function TrajectoryBar({ points, currentH, startH }) {
   return (
     <div className="mt-3">
-      <div className="flex items-end gap-0.5 h-8">
+      <div className="flex items-end gap-1.5 h-10 px-1 border-b border-border/50 pb-0.5">
         {points.map((pt, i) => {
           const pct = pt.success_rate
           const isActive = currentH >= startH + pt.offset_h
+          const barColor = isActive
+            ? pt.success_rate < 0.86
+              ? '#E5484D'
+              : '#F5A623'
+            : '#1E2A3A'
+
           return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+            <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
               <div
-                className="w-full transition-all duration-300"
+                className="w-full transition-all duration-300 rounded-t-sm"
                 style={{
-                  height: `${pct * 100}%`,
-                  background: isActive
-                    ? pt.success_rate < 0.86
-                      ? '#E5484D'
-                      : '#F5A623'
-                    : '#1E2A3A',
+                  height: `${Math.max(pct * 100, 10)}%`,
+                  backgroundColor: barColor,
+                  minHeight: '4px',
                 }}
+                title={`Offset +${pt.offset_h}h: ${(pct * 100).toFixed(0)}% success rate`}
               />
             </div>
           )
@@ -47,7 +51,7 @@ function TrajectoryBar({ points, currentH, startH }) {
       <div className="flex justify-between mt-1">
         {points.map((pt, i) => (
           <span key={i} className="font-mono text-[9px] text-muted">
-            {(pt.success_rate * 100).toFixed(0)}%
+            +{pt.offset_h}h ({(pt.success_rate * 100).toFixed(0)}%)
           </span>
         ))}
       </div>
