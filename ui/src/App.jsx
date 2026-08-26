@@ -9,22 +9,23 @@ const SIM_MAX = 430
 
 // T-2h before each incident's detection fires
 const DEMO_JUMPS = [
-  { label: '▶ Demo: INC-1', h: 245.5, hot: true,  tip: 'INC-1: RuPay/HDFC Degradation (94%→82%)' },
-  { label: '▶ Demo: INC-2', h: 307.7, hot: false, tip: 'INC-2: Cross-Border Route B (96%→84%)' },
-  { label: '▶ Demo: INC-3', h: 365.6, hot: false, tip: 'INC-3: UPI AutoPay Paytm (93%→85%)' },
+  { id: 'inc1', label: '▶ Demo: INC-1', h: 245.5, tip: 'INC-1: RuPay/HDFC Degradation (94%→82%)' },
+  { id: 'inc2', label: '▶ Demo: INC-2', h: 307.7, tip: 'INC-2: Cross-Border Route B (96%→84%)' },
+  { id: 'inc3', label: '▶ Demo: INC-3', h: 365.6, tip: 'INC-3: UPI AutoPay Paytm (93%→85%)' },
 ]
 
 const NAV_JUMPS = [
-  { label: 'h=0 (Nominal)', h: 0   },
-  { label: 'INC-1 (h=241)', h: 241 },
-  { label: 'INC-2 (h=301)', h: 301 },
-  { label: 'INC-3 (h=361)', h: 361 },
+  { id: 'h0',   label: 'h=0 (Nominal)', h: 0   },
+  { id: 'nav1', label: 'INC-1 (h=241)', h: 241 },
+  { id: 'nav2', label: 'INC-2 (h=301)', h: 301 },
+  { id: 'nav3', label: 'INC-3 (h=361)', h: 361 },
 ]
 
 export default function App() {
   const [approvalLog,   setApprovalLog]   = useState([])
   const [selectedRoute, setSelectedRoute] = useState(null)
-  const [simHour,       setSimHour]       = useState(0)
+  const [simHour,       setSimHour]       = useState(245.5) // start at active demo point
+  const [activeJumpId,  setActiveJumpId]  = useState('inc1') // track active clicked button
   const [simSpeed,      setSimSpeed]      = useState(10) // 10 sim-hours per real second
   const [playing,       setPlaying]       = useState(false)
   const [logOpen,       setLogOpen]       = useState(false)
@@ -61,21 +62,23 @@ export default function App() {
     setPlaying(prev => {
       const next = !prev
       if (next && simHour < 10) {
-        // Auto-jump to active incident demo if starting from h=0 so live activity is immediately visible
         setSimHour(245.5)
+        setActiveJumpId('inc1')
       }
       return next
     })
   }, [simHour])
 
-  const jumpTo = useCallback((h, autoPlay = true) => {
+  const jumpTo = useCallback((h, id = null, autoPlay = true) => {
     setSimHour(h)
+    if (id) setActiveJumpId(id)
     if (autoPlay) setPlaying(true)
   }, [])
 
   const handleReset = useCallback(() => {
     setPlaying(false)
     setSimHour(0)
+    setActiveJumpId('h0')
     setApprovalLog([])
     setSelectedRoute(null)
     setLogOpen(false)
@@ -119,7 +122,7 @@ export default function App() {
           onClick={togglePlay}
           className="font-mono text-[10px] px-2.5 py-1 border border-border hover:border-signal-blue transition-colors shrink-0 flex items-center gap-1.5"
           style={{ color: playing ? '#5B8DEF' : '#E8ECF1', background: playing ? '#5B8DEF1E' : '#141B26' }}
-          title={playing ? 'Pause simulation clock' : 'Play simulation clock (auto-starts at INC-1 if h=0)'}
+          title={playing ? 'Pause simulation clock' : 'Play simulation clock'}
         >
           <span>{playing ? '⏸ LIVE PLAYING' : '▶ START LIVE'}</span>
         </button>
@@ -146,7 +149,11 @@ export default function App() {
         <input
           type="range" min="0" max={SIM_MAX} step="0.5"
           value={simHour}
-          onChange={e => { setPlaying(false); setSimHour(Number(e.target.value)) }}
+          onChange={e => {
+            setPlaying(false)
+            setSimHour(Number(e.target.value))
+            setActiveJumpId(null)
+          }}
           className="flex-1 min-w-[100px]"
           style={{ accentColor: '#5B8DEF' }}
         />
@@ -157,36 +164,53 @@ export default function App() {
         {/* Separator */}
         <div className="w-px h-4 bg-border shrink-0" />
 
-        {/* Demo quick-jump buttons (T-minus-2h) */}
-        {DEMO_JUMPS.map(({ label, h, hot, tip }) => (
-          <button
-            key={label}
-            onClick={() => jumpTo(h)}
-            title={tip}
-            className="font-mono text-[9px] px-2 py-1 border transition-colors shrink-0"
-            style={{
-              borderColor: hot ? '#5B8DEF' : '#1E2A3A',
-              color:       hot ? '#5B8DEF' : '#6B7A90',
-            }}
-          >
-            {label}
-          </button>
-        ))}
+        {/* Demo quick-jump buttons — HIGHLIGHTS ONLY THE ACTIVE CLICKED BUTTON */}
+        {DEMO_JUMPS.map(({ id, label, h, tip }) => {
+          const isClicked = activeJumpId === id || (Math.abs(simHour - h) < 1.0 && activeJumpId === id)
+          return (
+            <button
+              key={id}
+              onClick={() => jumpTo(h, id)}
+              title={tip}
+              className="font-mono text-[9px] px-2 py-1 border transition-all shrink-0"
+              style={{
+                borderColor: isClicked ? '#5B8DEF' : '#1E2A3A',
+                color:       isClicked ? '#E8ECF1' : '#6B7A90',
+                background:  isClicked ? '#5B8DEF2E' : '#141B26',
+                fontWeight:  isClicked ? '600' : '400',
+                boxShadow:   isClicked ? '0 0 8px rgba(91, 141, 239, 0.35)' : 'none',
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
 
         {/* Separator */}
         <div className="w-px h-4 bg-border shrink-0" />
 
         {/* Nav jumps */}
-        {NAV_JUMPS.map(({ label, h }) => (
-          <button
-            key={label}
-            onClick={() => { setPlaying(false); setSimHour(h) }}
-            className="font-mono text-[9px] px-1.5 py-0.5 border border-border hover:border-signal-blue transition-colors shrink-0 text-muted"
-            title={`Jump clock to sim_h=${h}`}
-          >
-            {label}
-          </button>
-        ))}
+        {NAV_JUMPS.map(({ id, label, h }) => {
+          const isClicked = activeJumpId === id
+          return (
+            <button
+              key={id}
+              onClick={() => {
+                setPlaying(false)
+                jumpTo(h, id, false)
+              }}
+              className="font-mono text-[9px] px-1.5 py-0.5 border transition-all shrink-0 text-muted"
+              style={{
+                borderColor: isClicked ? '#5B8DEF' : '#1E2A3A',
+                color:       isClicked ? '#5B8DEF' : '#6B7A90',
+                background:  isClicked ? '#5B8DEF1A' : 'transparent',
+              }}
+              title={`Jump clock to sim_h=${h}`}
+            >
+              {label}
+            </button>
+          )
+        })}
 
         {/* Separator */}
         <div className="w-px h-4 bg-border shrink-0" />
