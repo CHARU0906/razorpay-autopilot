@@ -13,7 +13,7 @@ function fmt_pct(n, decimals = 1) {
 
 const METRICS = [
   {
-    label: 'Revenue Recovered',
+    label: 'Sim. Revenue Recovered',
     value: fmt_inr(BENCHMARK.autopilot.gross_revenue),
     sub: `${fmt_pct(BENCHMARK.autopilot.recovery_rate)} recovery rate`,
     color: 'text-signal-blue',
@@ -27,14 +27,14 @@ const METRICS = [
     detail: `orchestration +${BENCHMARK.autopilot.orchestration_gain_pct}% · detection +${BENCHMARK.autopilot.detection_gain_pct}%`,
   },
   {
-    label: 'Failures Processed',
+    label: 'Episodes Processed (Sim)',
     value: BENCHMARK.autopilot.interventions.toLocaleString(),
     sub: `${TOTAL_EPISODES.toLocaleString()} total episodes`,
     color: 'text-text',
     detail: `${(BENCHMARK.autopilot.recovery_rate * 100).toFixed(1)}% recovered`,
   },
   {
-    label: 'Revenue Gap to Ceiling',
+    label: 'Gap to Oracle Ceiling',
     value: fmt_inr(REVENUE_AT_RISK),
     sub: `${BENCHMARK.autopilot.pct_of_oracle.toFixed(1)}% of Oracle`,
     color: 'text-muted',
@@ -45,7 +45,7 @@ const METRICS = [
     value: `${(BENCHMARK.autopilot.uir * 100).toFixed(1)}%`,
     sub: `vs Smart-Dunning 49.0%`,
     color: 'text-green',
-    detail: 'UIR (customer-visible actions)',
+    detail: 'UIR — customer-visible only',
   },
   {
     label: 'Contacts / Recovery',
