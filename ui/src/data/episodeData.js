@@ -37,6 +37,31 @@ export const GATED_EPISODE = {
 }
 
 /**
+ * ep_1_216: do_not_honour, risk_score=0.686, amount=5205.68 INR
+ * Real Phase 3 trace candidate for Fix 5 (LLM Reasoning Example - Transparency Panel).
+ */
+export const LLM_EPISODE_216 = {
+  episode_id: 'ep_1_216',
+  failure_code: 'do_not_honour',
+  failure_message: 'Do not honour',
+  amount_inr: 5205.68,
+  payment_method: 'card',
+  card_network: 'mastercard',
+  issuer_bank_code: 'AXIS',
+  merchant_vertical: 'insurance',
+  risk_score_gateway: 0.686,
+  prior_soft_declines: 1,
+  ground_truth_class: 'transient',
+  ground_truth_optimal: 'retry_1h',
+  heuristic_inferred: 'insufficient_funds',
+  heuristic_action: 'send_recovery_link (failed) → retry_72h (72h delay)',
+  llm_inferred: 'transient',
+  llm_reasoning: '[LLM-stub] no strong signal in failure_message; defaulting to transient',
+  llm_action: 'retry_1h (succeeded in 1h, 0 friction)',
+}
+
+
+/**
  * Incident episode for the active incident panel.
  * ep_1_34: INC-1, IN/rupay/HDFC, sim_hour=253.57
  */

@@ -3,6 +3,7 @@ import MetricStrip from './components/MetricStrip.jsx'
 import ActionLog from './components/ActionLog.jsx'
 import RouteMap from './components/RouteMap.jsx'
 import NodeSidePanel from './components/NodeSidePanel.jsx'
+import LlmReasoningPanel from './components/LlmReasoningPanel.jsx'
 
 const SIM_SPEED = 3      // sim-hours per real second
 const SIM_MAX   = 430
@@ -28,7 +29,9 @@ export default function App() {
   const [simHour,       setSimHour]       = useState(0)
   const [playing,       setPlaying]       = useState(false)
   const [logOpen,       setLogOpen]       = useState(false)
+  const [llmPanelOpen,  setLlmPanelOpen]  = useState(false)
   const [resetKey,      setResetKey]      = useState(0)  // increment to remount RouteMap
+
 
   const lastTsRef  = useRef(null)
   const simHourRef = useRef(simHour)
@@ -173,10 +176,23 @@ export default function App() {
         >
           LOG {logOpen ? '▼' : '▶'}
         </button>
+
+        {/* Separator */}
+        <div className="w-px h-4 bg-border shrink-0" />
+
+        {/* LLM Reasoning toggle */}
+        <button
+          onClick={() => setLlmPanelOpen(o => !o)}
+          className="font-mono text-[9px] px-2 py-1 border border-signal-blue/50 hover:border-signal-blue transition-colors shrink-0 flex items-center gap-1"
+          style={{ color: llmPanelOpen ? '#5B8DEF' : '#E8ECF1', background: llmPanelOpen ? '#5B8DEF1A' : 'transparent' }}
+          title="Toggle LLM Reasoning Transparency Panel"
+        >
+          <span>🧠 LLM (SIMULATED)</span>
+        </button>
       </div>
 
       {/* ── Main body ── */}
-      <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+      <div className="flex flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
 
         {/* Hero: network map — key=resetKey forces remount on reset, clearing ring state */}
         <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>
@@ -208,7 +224,15 @@ export default function App() {
           </div>
         )}
 
+        {/* LLM Reasoning Modal Overlay */}
+        {llmPanelOpen && (
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <LlmReasoningPanel onClose={() => setLlmPanelOpen(false)} />
+          </div>
+        )}
+
       </div>
     </div>
+
   )
 }
