@@ -37,7 +37,7 @@ orchestration problem with explicit costs attached to every decision.
 > node → click node → side panel opens → Approve gate → Action Log captures result.
 
 ```
-[demo.gif]
+https://razorpay-autopilot.vercel.app/
 ```
 
 Start the UI locally: see [Quickstart](#quickstart).
