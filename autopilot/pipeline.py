@@ -141,23 +141,35 @@ class Autopilot:
             if self._detector is not None:
                 self._detector.enrich(inv, obs)
             incident_detected = inv.incident_active if self.detection_enabled else False
+            
+            # Format multi-line causal reasoning summary
+            inv_summary_lines = [
+                f"inferred_class={inv.inferred_class} (confidence={inv.confidence:.2f}, observability={inv.observability})",
+                f"Diagnostic Summary: {inv.diagnostic_summary}",
+                "Causal Chain:",
+            ]
+            for step_txt in inv.causal_chain:
+                inv_summary_lines.append(f"  → {step_txt}")
+            if inv.flags:
+                inv_summary_lines.append(f"Flags: {inv.flags}")
+            if inv.llm_used:
+                inv_summary_lines.append(f"LLM Reasoning: {inv.llm_reasoning}")
+
             trace.stages.append(StageLog(
                 stage="Investigator",
-                summary=(
-                    f"inferred_class={inv.inferred_class}, "
-                    f"observability={inv.observability}, "
-                    f"confidence={inv.confidence:.2f}, "
-                    f"flags={inv.flags}, "
-                    f"llm_used={inv.llm_used}"
-                    + (f", llm_reasoning={inv.llm_reasoning!r}" if inv.llm_used else "")
-                    + (f", incident_id={inv.incident_id}" if inv.incident_id else "")
-                    + (f", incident_active={inv.incident_active}" if inv.incident_active else "")
-                ),
-                detail={"inferred_class": inv.inferred_class,
-                        "observability": inv.observability,
-                        "confidence": inv.confidence,
-                        "flags": inv.flags,
-                        "incident_detected": incident_detected},
+                summary="\n".join(inv_summary_lines),
+                detail={
+                    "inferred_class": inv.inferred_class,
+                    "observability": inv.observability,
+                    "confidence": inv.confidence,
+                    "flags": inv.flags,
+                    "incident_detected": incident_detected,
+                    "incident_id": inv.incident_id,
+                    "causal_chain": inv.causal_chain,
+                    "diagnostic_summary": inv.diagnostic_summary,
+                    "eliminated_hypotheses": inv.eliminated_hypotheses,
+                    "action_space_constraints": inv.action_space_constraints,
+                },
             ))
 
             # Stage 2 — Strategist

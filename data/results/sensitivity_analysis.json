@@ -1,0 +1,74 @@
+[
+  {
+    "perturbation": "Nominal Baseline (0%)",
+    "autopilot_recovery_pct": 74.51,
+    "autopilot_gross_inr": 251206133.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 12.55,
+    "lift_vs_rule_based_pct": -4.73
+  },
+  {
+    "perturbation": "C_friction +20%",
+    "autopilot_recovery_pct": 74.16,
+    "autopilot_gross_inr": 251742666.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 12.79,
+    "lift_vs_rule_based_pct": -4.53
+  },
+  {
+    "perturbation": "C_friction -20%",
+    "autopilot_recovery_pct": 75.03,
+    "autopilot_gross_inr": 250862739.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 12.4,
+    "lift_vs_rule_based_pct": -4.87
+  },
+  {
+    "perturbation": "C_risk +20%",
+    "autopilot_recovery_pct": 74.55,
+    "autopilot_gross_inr": 250913313.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 12.42,
+    "lift_vs_rule_based_pct": -4.85
+  },
+  {
+    "perturbation": "C_risk -20%",
+    "autopilot_recovery_pct": 74.51,
+    "autopilot_gross_inr": 251203790.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 12.55,
+    "lift_vs_rule_based_pct": -4.74
+  },
+  {
+    "perturbation": "C_intervention +20%",
+    "autopilot_recovery_pct": 74.58,
+    "autopilot_gross_inr": 250353303.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 12.17,
+    "lift_vs_rule_based_pct": -5.06
+  },
+  {
+    "perturbation": "C_intervention -20%",
+    "autopilot_recovery_pct": 74.41,
+    "autopilot_gross_inr": 253387334.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 13.53,
+    "lift_vs_rule_based_pct": -3.91
+  },
+  {
+    "perturbation": "All Costs +20%",
+    "autopilot_recovery_pct": 74.32,
+    "autopilot_gross_inr": 252200221.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 13.0,
+    "lift_vs_rule_based_pct": -4.36
+  },
+  {
+    "perturbation": "All Costs -20%",
+    "autopilot_recovery_pct": 74.98,
+    "autopilot_gross_inr": 253038774.0,
+    "autopilot_uir_pct": 0.0,
+    "lift_vs_smart_dunning_pct": 13.37,
+    "lift_vs_rule_based_pct": -4.04
+  }
+]

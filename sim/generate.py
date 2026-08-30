@@ -242,7 +242,17 @@ def curve_ref(incident_id: str, inc: dict) -> dict:
     }
 
 
-def time_profile(true_class: str, incident_id: str | None, remaining_h: float) -> dict:
+def time_profile(
+    true_class: str,
+    incident_id: str | None,
+    remaining_h: float,
+    *,
+    regime: str = "homogeneous",
+    cust: dict | None = None,
+    rec: dict | None = None,
+    inst: dict | None = None,
+    geo: dict | None = None,
+) -> dict:
     class_peak = {
         "transient": 1.0,
         "insufficient_funds": 72.0,
@@ -259,6 +269,29 @@ def time_profile(true_class: str, incident_id: str | None, remaining_h: float) -
         "regional_degradation": 0.08,
         "non_recoverable": 0.40,
     }[true_class]
+
+    # Regime B: heterogeneous optimal timing conditioned on customer context
+    if regime in {"heterogeneous", "B", "regime_b"}:
+        if true_class == "insufficient_funds":
+            if rec and (rec.get("billing_cycle") == "monthly" or (cust and cust.get("avg_days_between_txns", 30.0) >= 20.0)):
+                class_peak = 168.0  # Monthly salary cycle needs ~7d (168h) delay
+            elif cust and float(cust.get("email_engagement_score", 0.0)) >= 0.75:
+                class_peak = 4.0    # Responsive dunning link
+            else:
+                class_peak = 72.0   # Mid-cycle short funds blip
+        elif true_class == "expired_card":
+            if (cust and cust.get("has_alternate_instrument_on_file")) or (inst and inst.get("token_type") == "network_token"):
+                class_peak = 0.25   # Immediate alternate route or token refresh
+            elif cust and float(cust.get("email_engagement_score", 0.0)) >= 0.60:
+                class_peak = 8.0    # Fast recovery link
+            else:
+                class_peak = 12.0   # Manual update prompt
+        elif true_class == "transient":
+            if geo and (geo.get("is_cross_border") or geo.get("acquirer_route_id") == "route_c"):
+                class_peak = 0.25   # Alternate route
+            else:
+                class_peak = 1.0
+
     out = {}
     for a in ACTIONS:
         delay = ACTION_DELAY_H[a]
@@ -288,43 +321,125 @@ def jitter_p(rng: random.Random, lo: float, hi: float) -> float:
 
 
 def base_success_probs(
-    true_class: str, incident_id: str | None, rng: random.Random
+    true_class: str,
+    incident_id: str | None,
+    rng: random.Random,
+    *,
+    regime: str = "homogeneous",
+    cust: dict | None = None,
+    rec: dict | None = None,
+    inst: dict | None = None,
+    geo: dict | None = None,
 ) -> dict[str, float]:
     p = {a: 0.0 for a in ACTIONS}
     if true_class == "transient":
-        p.update(
-            {
-                "retry_1h": jitter_p(rng, 0.58, 0.78),
-                "retry_6h": jitter_p(rng, 0.50, 0.70),
-                "retry_24h": jitter_p(rng, 0.28, 0.44),
-                "retry_72h": jitter_p(rng, 0.14, 0.28),
-                "retry_7d": jitter_p(rng, 0.08, 0.18),
-                "retry_alternate_route": jitter_p(rng, 0.42, 0.62),
-                "hold_for_incident": jitter_p(rng, 0.08, 0.18),
-                "send_dunning_notification": jitter_p(rng, 0.18, 0.32),
-                "send_recovery_link": jitter_p(rng, 0.22, 0.38),
-                "request_reauth": jitter_p(rng, 0.04, 0.10),
-                "request_new_payment_method": jitter_p(rng, 0.14, 0.26),
-                "escalate_to_merchant": jitter_p(rng, 0.25, 0.40),
-            }
-        )
+        if regime in {"heterogeneous", "B", "regime_b"} and geo and (geo.get("is_cross_border") or geo.get("acquirer_route_id") == "route_c"):
+            p.update(
+                {
+                    "retry_1h": jitter_p(rng, 0.35, 0.50),
+                    "retry_6h": jitter_p(rng, 0.30, 0.45),
+                    "retry_24h": jitter_p(rng, 0.20, 0.35),
+                    "retry_72h": jitter_p(rng, 0.10, 0.20),
+                    "retry_7d": jitter_p(rng, 0.05, 0.15),
+                    "retry_alternate_route": jitter_p(rng, 0.72, 0.88),
+                    "hold_for_incident": jitter_p(rng, 0.08, 0.18),
+                    "send_dunning_notification": jitter_p(rng, 0.15, 0.28),
+                    "send_recovery_link": jitter_p(rng, 0.20, 0.35),
+                    "request_reauth": jitter_p(rng, 0.04, 0.10),
+                    "request_new_payment_method": jitter_p(rng, 0.12, 0.24),
+                    "escalate_to_merchant": jitter_p(rng, 0.25, 0.40),
+                }
+            )
+        else:
+            p.update(
+                {
+                    "retry_1h": jitter_p(rng, 0.58, 0.78),
+                    "retry_6h": jitter_p(rng, 0.50, 0.70),
+                    "retry_24h": jitter_p(rng, 0.28, 0.44),
+                    "retry_72h": jitter_p(rng, 0.14, 0.28),
+                    "retry_7d": jitter_p(rng, 0.08, 0.18),
+                    "retry_alternate_route": jitter_p(rng, 0.42, 0.62),
+                    "hold_for_incident": jitter_p(rng, 0.08, 0.18),
+                    "send_dunning_notification": jitter_p(rng, 0.18, 0.32),
+                    "send_recovery_link": jitter_p(rng, 0.22, 0.38),
+                    "request_reauth": jitter_p(rng, 0.04, 0.10),
+                    "request_new_payment_method": jitter_p(rng, 0.14, 0.26),
+                    "escalate_to_merchant": jitter_p(rng, 0.25, 0.40),
+                }
+            )
     elif true_class == "insufficient_funds":
-        p.update(
-            {
-                "retry_1h": jitter_p(rng, 0.08, 0.16),
-                "retry_6h": jitter_p(rng, 0.12, 0.22),
-                "retry_24h": jitter_p(rng, 0.34, 0.50),
-                "retry_72h": jitter_p(rng, 0.48, 0.64),
-                "retry_7d": jitter_p(rng, 0.52, 0.70),
-                "retry_alternate_route": jitter_p(rng, 0.08, 0.16),
-                "hold_for_incident": jitter_p(rng, 0.06, 0.14),
-                "send_dunning_notification": jitter_p(rng, 0.38, 0.54),
-                "send_recovery_link": jitter_p(rng, 0.44, 0.62),
-                "request_reauth": jitter_p(rng, 0.04, 0.10),
-                "request_new_payment_method": jitter_p(rng, 0.28, 0.46),
-                "escalate_to_merchant": jitter_p(rng, 0.18, 0.32),
-            }
-        )
+        if regime in {"heterogeneous", "B", "regime_b"}:
+            if rec and (rec.get("billing_cycle") == "monthly" or (cust and cust.get("avg_days_between_txns", 30.0) >= 20.0)):
+                # Monthly salary timing sub-cohort: 7d retry is dominant optimal
+                p.update(
+                    {
+                        "retry_1h": jitter_p(rng, 0.04, 0.10),
+                        "retry_6h": jitter_p(rng, 0.06, 0.12),
+                        "retry_24h": jitter_p(rng, 0.12, 0.20),
+                        "retry_72h": jitter_p(rng, 0.20, 0.32),
+                        "retry_7d": jitter_p(rng, 0.72, 0.88),
+                        "retry_alternate_route": jitter_p(rng, 0.06, 0.14),
+                        "hold_for_incident": jitter_p(rng, 0.04, 0.10),
+                        "send_dunning_notification": jitter_p(rng, 0.35, 0.50),
+                        "send_recovery_link": jitter_p(rng, 0.40, 0.58),
+                        "request_reauth": jitter_p(rng, 0.04, 0.10),
+                        "request_new_payment_method": jitter_p(rng, 0.20, 0.36),
+                        "escalate_to_merchant": jitter_p(rng, 0.15, 0.28),
+                    }
+                )
+            elif cust and float(cust.get("email_engagement_score", 0.0)) >= 0.75:
+                # High digital engagement: direct link/nudge optimal
+                p.update(
+                    {
+                        "retry_1h": jitter_p(rng, 0.08, 0.16),
+                        "retry_6h": jitter_p(rng, 0.14, 0.24),
+                        "retry_24h": jitter_p(rng, 0.30, 0.45),
+                        "retry_72h": jitter_p(rng, 0.45, 0.60),
+                        "retry_7d": jitter_p(rng, 0.48, 0.64),
+                        "retry_alternate_route": jitter_p(rng, 0.10, 0.20),
+                        "hold_for_incident": jitter_p(rng, 0.06, 0.14),
+                        "send_dunning_notification": jitter_p(rng, 0.58, 0.74),
+                        "send_recovery_link": jitter_p(rng, 0.68, 0.84),
+                        "request_reauth": jitter_p(rng, 0.04, 0.10),
+                        "request_new_payment_method": jitter_p(rng, 0.30, 0.48),
+                        "escalate_to_merchant": jitter_p(rng, 0.18, 0.32),
+                    }
+                )
+            else:
+                # Mid-cycle weekly timing: 72h retry optimal
+                p.update(
+                    {
+                        "retry_1h": jitter_p(rng, 0.08, 0.16),
+                        "retry_6h": jitter_p(rng, 0.14, 0.24),
+                        "retry_24h": jitter_p(rng, 0.38, 0.54),
+                        "retry_72h": jitter_p(rng, 0.65, 0.80),
+                        "retry_7d": jitter_p(rng, 0.35, 0.48),
+                        "retry_alternate_route": jitter_p(rng, 0.08, 0.16),
+                        "hold_for_incident": jitter_p(rng, 0.06, 0.14),
+                        "send_dunning_notification": jitter_p(rng, 0.38, 0.52),
+                        "send_recovery_link": jitter_p(rng, 0.44, 0.60),
+                        "request_reauth": jitter_p(rng, 0.04, 0.10),
+                        "request_new_payment_method": jitter_p(rng, 0.28, 0.44),
+                        "escalate_to_merchant": jitter_p(rng, 0.18, 0.32),
+                    }
+                )
+        else:
+            p.update(
+                {
+                    "retry_1h": jitter_p(rng, 0.08, 0.16),
+                    "retry_6h": jitter_p(rng, 0.12, 0.22),
+                    "retry_24h": jitter_p(rng, 0.34, 0.50),
+                    "retry_72h": jitter_p(rng, 0.48, 0.64),
+                    "retry_7d": jitter_p(rng, 0.52, 0.70),
+                    "retry_alternate_route": jitter_p(rng, 0.08, 0.16),
+                    "hold_for_incident": jitter_p(rng, 0.06, 0.14),
+                    "send_dunning_notification": jitter_p(rng, 0.38, 0.54),
+                    "send_recovery_link": jitter_p(rng, 0.44, 0.62),
+                    "request_reauth": jitter_p(rng, 0.04, 0.10),
+                    "request_new_payment_method": jitter_p(rng, 0.28, 0.46),
+                    "escalate_to_merchant": jitter_p(rng, 0.18, 0.32),
+                }
+            )
     elif true_class == "auth_required":
         p.update(
             {
@@ -343,22 +458,76 @@ def base_success_probs(
             }
         )
     elif true_class == "expired_card":
-        p.update(
-            {
-                "retry_1h": jitter_p(rng, 0.00, 0.04),
-                "retry_6h": jitter_p(rng, 0.00, 0.04),
-                "retry_24h": jitter_p(rng, 0.00, 0.05),
-                "retry_72h": jitter_p(rng, 0.00, 0.05),
-                "retry_7d": jitter_p(rng, 0.00, 0.06),
-                "retry_alternate_route": jitter_p(rng, 0.00, 0.05),
-                "hold_for_incident": jitter_p(rng, 0.00, 0.04),
-                "send_dunning_notification": jitter_p(rng, 0.12, 0.24),
-                "send_recovery_link": jitter_p(rng, 0.32, 0.50),
-                "request_reauth": jitter_p(rng, 0.04, 0.12),
-                "request_new_payment_method": jitter_p(rng, 0.56, 0.80),
-                "escalate_to_merchant": jitter_p(rng, 0.10, 0.22),
-            }
-        )
+        if regime in {"heterogeneous", "B", "regime_b"}:
+            if (cust and cust.get("has_alternate_instrument_on_file")) or (inst and inst.get("token_type") == "network_token"):
+                # Zero-friction alternate instrument / token refresh optimal
+                p.update(
+                    {
+                        "retry_1h": jitter_p(rng, 0.02, 0.06),
+                        "retry_6h": jitter_p(rng, 0.02, 0.06),
+                        "retry_24h": jitter_p(rng, 0.02, 0.06),
+                        "retry_72h": jitter_p(rng, 0.02, 0.06),
+                        "retry_7d": jitter_p(rng, 0.02, 0.06),
+                        "retry_alternate_route": jitter_p(rng, 0.82, 0.94),
+                        "hold_for_incident": jitter_p(rng, 0.00, 0.04),
+                        "send_dunning_notification": jitter_p(rng, 0.15, 0.28),
+                        "send_recovery_link": jitter_p(rng, 0.45, 0.60),
+                        "request_reauth": jitter_p(rng, 0.06, 0.16),
+                        "request_new_payment_method": jitter_p(rng, 0.52, 0.72),
+                        "escalate_to_merchant": jitter_p(rng, 0.10, 0.22),
+                    }
+                )
+            elif cust and float(cust.get("email_engagement_score", 0.0)) >= 0.60:
+                p.update(
+                    {
+                        "retry_1h": jitter_p(rng, 0.00, 0.04),
+                        "retry_6h": jitter_p(rng, 0.00, 0.04),
+                        "retry_24h": jitter_p(rng, 0.00, 0.05),
+                        "retry_72h": jitter_p(rng, 0.00, 0.05),
+                        "retry_7d": jitter_p(rng, 0.00, 0.06),
+                        "retry_alternate_route": jitter_p(rng, 0.02, 0.08),
+                        "hold_for_incident": jitter_p(rng, 0.00, 0.04),
+                        "send_dunning_notification": jitter_p(rng, 0.20, 0.35),
+                        "send_recovery_link": jitter_p(rng, 0.70, 0.86),
+                        "request_reauth": jitter_p(rng, 0.04, 0.12),
+                        "request_new_payment_method": jitter_p(rng, 0.58, 0.76),
+                        "escalate_to_merchant": jitter_p(rng, 0.10, 0.22),
+                    }
+                )
+            else:
+                p.update(
+                    {
+                        "retry_1h": jitter_p(rng, 0.00, 0.04),
+                        "retry_6h": jitter_p(rng, 0.00, 0.04),
+                        "retry_24h": jitter_p(rng, 0.00, 0.05),
+                        "retry_72h": jitter_p(rng, 0.00, 0.05),
+                        "retry_7d": jitter_p(rng, 0.00, 0.06),
+                        "retry_alternate_route": jitter_p(rng, 0.00, 0.05),
+                        "hold_for_incident": jitter_p(rng, 0.00, 0.04),
+                        "send_dunning_notification": jitter_p(rng, 0.12, 0.24),
+                        "send_recovery_link": jitter_p(rng, 0.32, 0.50),
+                        "request_reauth": jitter_p(rng, 0.04, 0.12),
+                        "request_new_payment_method": jitter_p(rng, 0.65, 0.84),
+                        "escalate_to_merchant": jitter_p(rng, 0.10, 0.22),
+                    }
+                )
+        else:
+            p.update(
+                {
+                    "retry_1h": jitter_p(rng, 0.00, 0.04),
+                    "retry_6h": jitter_p(rng, 0.00, 0.04),
+                    "retry_24h": jitter_p(rng, 0.00, 0.05),
+                    "retry_72h": jitter_p(rng, 0.00, 0.05),
+                    "retry_7d": jitter_p(rng, 0.00, 0.06),
+                    "retry_alternate_route": jitter_p(rng, 0.00, 0.05),
+                    "hold_for_incident": jitter_p(rng, 0.00, 0.04),
+                    "send_dunning_notification": jitter_p(rng, 0.12, 0.24),
+                    "send_recovery_link": jitter_p(rng, 0.32, 0.50),
+                    "request_reauth": jitter_p(rng, 0.04, 0.12),
+                    "request_new_payment_method": jitter_p(rng, 0.56, 0.80),
+                    "escalate_to_merchant": jitter_p(rng, 0.10, 0.22),
+                }
+            )
     elif true_class == "regional_degradation":
         p.update(
             {
@@ -927,8 +1096,13 @@ def build_episode(
         inc = incidents[incident_id]
         remaining = float(inc["start_sim_hour"]) + float(inc["window_h"]) - sim_hour
 
-    base_p = base_success_probs(true_class, incident_id, rng)
-    profile = time_profile(true_class, incident_id, remaining)
+    regime = cfg.get("regime", run_stamp.get("regime", "homogeneous"))
+    base_p = base_success_probs(
+        true_class, incident_id, rng, regime=regime, cust=cust, rec=rec, inst=inst, geo=geo
+    )
+    profile = time_profile(
+        true_class, incident_id, remaining, regime=regime, cust=cust, rec=rec, inst=inst, geo=geo
+    )
     fatigue = round_f(rng.uniform(0.82, 0.94), 4)
     ltv = cust["lifetime_value_inr"]
     eng = cust["email_engagement_score"]
@@ -1291,7 +1465,7 @@ def sample_from_each_pop(observed: list[dict], gt: list[dict]) -> dict[str, dict
     return out
 
 
-def generate(cfg: dict, seed: int, out_dir: Path) -> dict:
+def generate(cfg: dict, seed: int, out_dir: Path, regime: str = "homogeneous") -> dict:
     assert_seed_bands(seed, cfg)
     n = int(cfg["n_episodes"])
     rng = random.Random(seed)
@@ -1311,6 +1485,7 @@ def generate(cfg: dict, seed: int, out_dir: Path) -> dict:
         "eval_seed_band": cfg["eval_seed_band"],
         "train_seed_band": cfg["train_seed_band"],
         "revenue": cfg["revenue"],
+        "regime": regime,
         "decisions": ["D1", "D2", "D3", "D4"],
     }
 
@@ -1350,6 +1525,7 @@ def generate(cfg: dict, seed: int, out_dir: Path) -> dict:
         "eval_seed_band": cfg["eval_seed_band"],
         "train_seed_band": cfg["train_seed_band"],
         "revenue": cfg["revenue"],
+        "regime": regime,
         "decisions": ["D1", "D2", "D3", "D4"],
         "incidents": {
             iid: {
@@ -1408,13 +1584,16 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Phase 1 simulator + ground truth")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--n", type=int, default=None, help="override n_episodes (default from yaml)")
+    p.add_argument("--regime", choices=["homogeneous", "heterogeneous", "A", "B"], default="homogeneous",
+                   help="GT regime: homogeneous (Regime A) or heterogeneous (Regime B)")
     p.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     p.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = p.parse_args(argv)
     cfg = load_config(args.config)
     if args.n is not None:
         cfg["n_episodes"] = args.n
-    result = generate(cfg, args.seed, args.out)
+    regime = "heterogeneous" if args.regime in {"heterogeneous", "B"} else "homogeneous"
+    result = generate(cfg, args.seed, args.out, regime=regime)
     print("Wrote:")
     for k, v in result["paths"].items():
         print(f"  {k}: {v}")

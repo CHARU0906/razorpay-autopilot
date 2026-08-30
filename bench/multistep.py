@@ -223,20 +223,20 @@ def make_strategy(name: str, gt_rows: list[dict], bundle, detector=None):
 # ── Single seed runner ────────────────────────────────────────────────────────
 
 def run_seed(seed: int, strategy_names: list[str], cfg: dict,
-             rng_base: int = 0) -> dict:
+             rng_base: int = 0, regime: str = "homogeneous") -> dict:
     import autopilot.policy_engine as pe
     pe._POLICY = None
     from strategies.retry_model import load_bundle
     from strategies.common import MANDATORY_ESCALATION_CODES
 
-    if seed == 1 and (DATA / "episodes.jsonl").exists():
+    if seed == 1 and regime == "homogeneous" and (DATA / "episodes.jsonl").exists():
         episodes = load_jsonl(DATA / "episodes.jsonl")
         gt_rows  = load_jsonl(DATA / "ground_truth.jsonl")
     else:
         from sim.generate import generate
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
-            generate(cfg, seed, out)
+            generate(cfg, seed, out, regime=regime)
             episodes = load_jsonl(out / "episodes.jsonl")
             gt_rows  = load_jsonl(out / "ground_truth.jsonl")
 
@@ -519,66 +519,93 @@ def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--seeds", type=int, nargs="+", default=EVAL_SEEDS)
     p.add_argument("--strategies", nargs="+", default=ALL_STRATEGIES)
-    p.add_argument("--out", type=Path, default=DATA / "results" / "phase4_multistep.json")
+    p.add_argument("--regime", choices=["homogeneous", "heterogeneous", "A", "B", "both"], default="homogeneous",
+                   help="GT regime to run: homogeneous (Regime A), heterogeneous (Regime B), or both")
+    p.add_argument("--out", type=Path, default=None)
     args = p.parse_args(argv)
 
     cfg = yaml.safe_load((ROOT / "sim_config.yaml").read_text())
 
-    print(f"Phase 4 multi-step: {len(args.strategies)} strategies × {len(args.seeds)} seeds")
-    print(f"  Seeds: {args.seeds}")
-
-    seed_results = []
-    for i, seed in enumerate(args.seeds, 1):
-        import autopilot.policy_engine as pe
-        pe._POLICY = None
-        t0 = time.time()
-        print(f"  [{i}/{len(args.seeds)}] seed={seed} ...", end=" ", flush=True)
-        sr = run_seed(seed, args.strategies, cfg)
-        seed_results.append(sr)
-        print(f"done ({time.time()-t0:.1f}s)")
-
-    agg = aggregate(seed_results)
-    print_full_table(agg, args.strategies)
-
-    # Phase 5: detection latency report
-    all_detections = [d for sr in seed_results for d in sr.get("_detector_stats", [])]
-    if all_detections:
-        print(f"\n  PHASE 5 — Detection latency report ({len(all_detections)} detections across {len(args.seeds)} seeds)")
-        print(f"  {'cohort_key':20s}  {'det_sim_hour':>14s}  {'rate':>6s}  {'early':>6s}  {'late':>6s}  {'n_obs':>6s}")
-        print("  " + "-"*65)
-        for d in all_detections:
-            print(f"  {d['cohort_key']:20s}  {d['detection_sim_hour']:>14.1f}h  "
-                  f"{d['rate_at_detection']:>6.3f}  {d['early_mean']:>6.3f}  "
-                  f"{d['late_mean']:>6.3f}  {d['n_obs']:>6d}")
-        # Compare against known incident start hours from sim_config
-        print(f"\n  Known incident start hours (from sim_config.yaml):")
-        for inc_id, inc in cfg["incidents"].items():
-            print(f"    {inc_id}: start={inc['start_sim_hour']}h  cohort={inc['cohort']}")
-        # Latency = detection_sim_hour - incident_start_sim_hour (approximate, by cohort match)
-        print(f"\n  Latency estimate (detection_hour - incident_start_hour):")
-        inc_starts = {
-            "IN|rupay|HDFC": 240.0,   # INC-1
-            "xb|route_b":   300.0,   # INC-2
-            "upi|PAYTM":    360.0,   # INC-3
-        }
-        for d in all_detections:
-            start = inc_starts.get(d["cohort_key"])
-            if start is not None:
-                latency = d["detection_sim_hour"] - start
-                print(f"    {d['cohort_key']:20s}  detected at h{d['detection_sim_hour']:.1f}  "
-                      f"incident started h{start:.0f}  latency={latency:+.1f}h")
+    regimes_to_run = []
+    if args.regime in {"both"}:
+        regimes_to_run = ["homogeneous", "heterogeneous"]
+    elif args.regime in {"heterogeneous", "B"}:
+        regimes_to_run = ["heterogeneous"]
     else:
-        print(f"\n  Phase 5: no incidents detected across {len(args.seeds)} seeds.")
-        print(f"  Detection-gain cannot be measured until detector fires.")
+        regimes_to_run = ["homogeneous"]
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps({
-        "seeds": args.seeds,
-        "strategies": args.strategies,
-        "aggregate": {k: {kk: vv for kk, vv in v.items() if kk != "per_pop"}
-                      for k, v in agg.items()},
-    }, indent=2))
-    print(f"\n  Results saved to {args.out}")
+    for reg in regimes_to_run:
+        reg_label = "Regime A (Homogeneous GT)" if reg == "homogeneous" else "Regime B (Heterogeneous Multi-Modal GT)"
+        print(f"\n=========================================================================================================")
+        print(f"  RUNNING BENCHMARK: {reg_label}")
+        print(f"  {len(args.strategies)} strategies × {len(args.seeds)} seeds: {args.seeds}")
+        print(f"=========================================================================================================")
+
+        seed_results = []
+        for i, seed in enumerate(args.seeds, 1):
+            import autopilot.policy_engine as pe
+            pe._POLICY = None
+            t0 = time.time()
+            print(f"  [{i}/{len(args.seeds)}] seed={seed} ({reg}) ...", end=" ", flush=True)
+            sr = run_seed(seed, args.strategies, cfg, regime=reg)
+            seed_results.append(sr)
+            print(f"done ({time.time()-t0:.1f}s)")
+
+        agg = aggregate(seed_results)
+        print_full_table(agg, args.strategies)
+
+        # Phase 5: detection latency report
+        all_detections = [d for sr in seed_results for d in sr.get("_detector_stats", [])]
+        if all_detections:
+            print(f"\n  PHASE 5 — Detection latency report ({len(all_detections)} detections across {len(args.seeds)} seeds)")
+            print(f"  {'cohort_key':20s}  {'det_sim_hour':>14s}  {'rate':>6s}  {'early':>6s}  {'late':>6s}  {'n_obs':>6s}")
+            print("  " + "-"*65)
+            for d in all_detections:
+                print(f"  {d['cohort_key']:20s}  {d['detection_sim_hour']:>14.1f}h  "
+                      f"{d['rate_at_detection']:>6.3f}  {d['early_mean']:>6.3f}  "
+                      f"{d['late_mean']:>6.3f}  {d['n_obs']:>6d}")
+            inc_starts = {
+                "IN|rupay|HDFC": 240.0,   # INC-1
+                "xb|route_b":   300.0,   # INC-2
+                "upi|PAYTM":    360.0,   # INC-3
+            }
+            print(f"\n  Latency estimate (detection_hour - incident_start_hour):")
+            for d in all_detections:
+                start = inc_starts.get(d["cohort_key"])
+                if start is not None:
+                    latency = d["detection_sim_hour"] - start
+                    print(f"    {d['cohort_key']:20s}  detected at h{d['detection_sim_hour']:.1f}  "
+                          f"incident started h{start:.0f}  latency={latency:+.1f}h")
+
+        out_path = args.out
+        if out_path is None:
+            if reg == "homogeneous":
+                out_path = DATA / "results" / "phase4_regime_a.json"
+            else:
+                out_path = DATA / "results" / "phase4_regime_b.json"
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps({
+            "regime": reg,
+            "seeds": args.seeds,
+            "strategies": args.strategies,
+            "aggregate": {k: {kk: vv for kk, vv in v.items() if kk != "per_pop"}
+                          for k, v in agg.items()},
+            "per_pop": {k: v.get("per_pop", {}) for k, v in agg.items()},
+        }, indent=2))
+        print(f"\n  Results saved to {out_path}")
+
+        # Also write to canonical phase4_multistep.json if running homogeneous as primary
+        if reg == "homogeneous" and args.out is None:
+            (DATA / "results" / "phase4_multistep.json").write_text(json.dumps({
+                "regime": reg,
+                "seeds": args.seeds,
+                "strategies": args.strategies,
+                "aggregate": {k: {kk: vv for kk, vv in v.items() if kk != "per_pop"}
+                              for k, v in agg.items()},
+                "per_pop": {k: v.get("per_pop", {}) for k, v in agg.items()},
+            }, indent=2))
+
     return 0
 
 

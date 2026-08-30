@@ -9,8 +9,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import textwrap
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 from strategies.common import episode_state_from_observed
 
@@ -30,9 +37,9 @@ def load_jsonl(path: Path) -> list[dict]:
 
 def print_trace(trace, *, variant_label: str) -> None:
     print(f"\n{'='*72}")
-    print(f"  AUTOPILOT EPISODE TRACE — {variant_label}")
+    print(f"  AUTOPILOT EPISODE TRACE -- {variant_label}")
     print(f"  episode_id : {trace.episode_id}")
-    print(f"  outcome    : {'SUCCESS ✓' if trace.success else 'FAILURE ✗'}")
+    print(f"  outcome    : {'SUCCESS [OK]' if trace.success else 'FAILURE [FAIL]'}")
     print(f"  n_actions  : {trace.n_actions}")
     print(f"  final_action: {trace.final_action}")
     print(f"  replan_count: {trace.replan_count}")
@@ -42,7 +49,7 @@ def print_trace(trace, *, variant_label: str) -> None:
     for log in trace.stages:
         if log.stage == "Investigator":
             step += 1
-            print(f"  ── ATTEMPT {step} ──────────────────────────────────────────────────\n")
+            print(f"  -- ATTEMPT {step} --------------------------------------------------\n")
 
         prefix = f"  [{log.stage}]"
         # Multi-line stages (Strategist reasoning)

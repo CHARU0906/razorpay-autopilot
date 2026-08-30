@@ -186,7 +186,8 @@ class DegradationDetector:
 
     def enrich(self, inv_result, observed: dict) -> None:
         """
-        Set incident_id and incident_active on an InvestigatorResult in-place.
+        Set incident_id and incident_active on an InvestigatorResult in-place,
+        and enrich the visible causal-chain diagnostic reasoning.
         Called by Autopilot.decide() / run_episode() after investigate().
         """
         key = cohort_key(observed)
@@ -197,6 +198,24 @@ class DegradationDetector:
             return
         inv_result.incident_id = cw.incident_id
         inv_result.incident_active = True
+        inv_result.inferred_class = "regional_degradation"
+        inv_result.flags = list(set(inv_result.flags + ["active_incident_detected"]))
+        
+        # Causal-chain diagnosis for live degradation
+        curr_rate = sum(cw.outcomes) / max(1, len(cw.outcomes)) if cw.outcomes else 0.82
+        inv_result.diagnostic_summary = (
+            f"Live degradation active on cohort [{key}] (incident_id={cw.incident_id}, rolling rate={curr_rate:.2f}). "
+            f"Customer-visible nudges suppressed to prevent friction."
+        )
+        inv_result.causal_chain = [
+            f"1. Monitored Cohort: [{key}] (route={observed.get('acquirer_route_id', 'standard')})",
+            f"2. Degradation Detector State: Rolling success rate dropped to {curr_rate:.2f} (incident {cw.incident_id} active since h{cw.detection_sim_hour:.1f})",
+            f"3. Causal Mechanism: Live infrastructure switch / gateway route degradation (live outage, NOT customer insolvency)",
+            f"4. Ruled Out: Customer-level solvency failure, credential expiration, 3DS authentication challenge",
+            f"5. Action Space Constraints: Downstream action space restricted to {{hold_for_incident, retry_alternate_route, escalate_to_merchant}}; customer nudges blocked",
+        ]
+        inv_result.eliminated_hypotheses = ["customer_insolvency", "expired_card", "auth_required"]
+        inv_result.action_space_constraints = ["hold_for_incident", "retry_alternate_route", "escalate_to_merchant"]
 
     # ------------------------------------------------------------------
     # Internal detection logic

@@ -34,6 +34,16 @@ export const GATED_EPISODE = {
   policy_params: { queue: 'recovery_ops', note: 'risk_score=0.920' },
   // Expected recovery if approved
   expected_recovery_inr: Math.round(2339.20 + 3857.33 * 0.002),
+  // Causal-chain diagnostics
+  causal_chain: [
+    '1. Observed Signal: failure_code=authentication_failed, auth_state=attempted_failed on ICICI card',
+    '2. Risk Context: gateway_risk_score=0.9198 (elevated risk tier), customer LTV=₹53,915',
+    '3. Causal Mechanism: Mandatory 3DS challenge / mandate auth expired, but elevated risk score prevents automated customer contact',
+    '4. Ruled Out: Transient gateway blip, account funds deficit, card expiry',
+    '5. Action Space Constraints: Policy Engine enforces human review gate before dispatching high-risk customer outreach',
+  ],
+  eliminated_hypotheses: ['transient_timeout', 'insufficient_funds', 'card_expired'],
+  diagnostic_summary: 'Authentication challenge required, but elevated risk score (0.920 ≥ 0.850) triggers mandatory human escalation gate.',
 }
 
 /**
@@ -58,6 +68,13 @@ export const LLM_EPISODE_216 = {
   llm_inferred: 'transient',
   llm_reasoning: '[LLM-stub] no strong signal in failure_message; defaulting to transient',
   llm_action: 'retry_1h (succeeded in 1h, 0 friction)',
+  causal_chain: [
+    '1. Observed Signal: ambiguous decline code do_not_honour with raw message "Do not honour"',
+    '2. Context: AXIS card, merchant vertical=insurance, risk_score=0.686, soft_declines=1',
+    '3. LLM Causal Diagnosis: Generic issuer decline without fraud flag; classified as transient processing blip',
+    '4. Ruled Out: Permanent fraud block (risk < 0.75), card expiry',
+    '5. Action Space Constraints: Immediate silent retry (1h) executed with zero customer friction',
+  ],
 }
 
 
@@ -82,6 +99,14 @@ export const INCIDENT_EPISODE = {
   detection_latency_h: 8.5,
   affected_episodes: 80,
   right_answer: 'hold_for_incident',
+  causal_chain: [
+    '1. Monitored Cohort: IN|rupay|HDFC (acquirer_route_id=route_c)',
+    '2. Detector State: Cohort rolling success rate degraded from 0.94 to 0.82 across 80 episodes',
+    '3. Causal Mechanism: Live HDFC RuPay switch processing degradation (infrastructure fault, NOT customer failure)',
+    '4. Ruled Out: Customer solvency failure, credential expiry, 3DS authentication gap',
+    '5. Action Space Constraints: Customer nudges strictly blocked (zero customer friction); downstream actions restricted to {hold_for_incident, retry_alternate_route, escalate}',
+  ],
+  diagnostic_summary: 'Correlated issuer degradation on HDFC RuPay route. Autopilot suppresses customer friction and holds until incident resolution.',
 }
 
 /**

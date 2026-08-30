@@ -49,6 +49,12 @@ def _mock_ops_queue(action_id: str, params: dict, episode_id: str) -> dict:
             "status": "ticket_created", "episode_id": episode_id}
 
 
+def _mock_promise_api(action_id: str, params: dict, episode_id: str) -> dict:
+    return {"tool": "MockPromiseAPI", "action": action_id, "params": params,
+            "status": "promise_logged", "episode_id": episode_id,
+            "due_in_hours": params.get("due_in_hours", 48.0)}
+
+
 TOOL_MAP = {
     "stop": (lambda a, p, e: {"tool": "none", "status": "stopped"}, "none"),
     "retry_1h": (_mock_retry_api, "MockRetryAPI"),
@@ -63,6 +69,7 @@ TOOL_MAP = {
     "request_reauth": (_mock_recovery_link_api, "MockRecoveryLinkAPI"),
     "request_new_payment_method": (_mock_notification_api, "MockNotificationAPI"),
     "escalate_to_merchant": (_mock_ops_queue, "MockOpsQueue"),
+    "log_promise_to_pay": (_mock_promise_api, "MockPromiseAPI"),
 }
 
 

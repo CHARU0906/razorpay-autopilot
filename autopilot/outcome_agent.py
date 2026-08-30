@@ -59,6 +59,28 @@ def process(
     n_actions = len(actions_taken)
     replan_count = int(episode_state.get("replan_count") or 0)
 
+    # Task 5: Handle log_promise_to_pay tracking
+    if action_id == "log_promise_to_pay":
+        promise_outcome = action_result.params.get("promise_outcome", "fulfilled" if action_result.success else "broken")
+        if promise_outcome == "fulfilled":
+            log = (f"[{eid}] ✓ Promise-to-Pay FULFILLED on time "
+                   f"(due_h={action_result.params.get('due_in_hours', 48)}h, attempt={n_actions}) — recovered")
+            return OutcomeResult(
+                episode_id=eid, action_id=action_id,
+                success=True, terminal=True, replan=False,
+                updated_state=new_state, log_line=log,
+            )
+        else:
+            new_state["promise_broken"] = True
+            new_state["replan_count"] = replan_count + 1
+            log = (f"[{eid}] ✗ Promise-to-Pay BROKEN (due date passed without settlement) — "
+                   f"feeding back into replanning loop (replan #{replan_count + 1})")
+            return OutcomeResult(
+                episode_id=eid, action_id=action_id,
+                success=False, terminal=False, replan=True,
+                updated_state=new_state, log_line=log,
+            )
+
     if action_result.success:
         log = (f"[{eid}] ✓ {action_id} SUCCEEDED "
                f"(p_eff={action_result.p_eff:.3f}, attempt={n_actions})")

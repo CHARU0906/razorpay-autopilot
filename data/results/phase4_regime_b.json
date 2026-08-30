@@ -1,0 +1,288 @@
+{
+  "regime": "heterogeneous",
+  "seeds": [
+    1
+  ],
+  "strategies": [
+    "rule_based",
+    "smart_dunning",
+    "autopilot",
+    "oracle"
+  ],
+  "aggregate": {
+    "rule_based": {
+      "n_mean": 3000.0,
+      "n_std": 0.0,
+      "recovered_mean": 2007.0,
+      "recovered_std": 0.0,
+      "recovery_rate_mean": 0.669,
+      "recovery_rate_std": 0.0,
+      "gross_revenue_mean": 240269367.18000004,
+      "gross_revenue_std": 0.0,
+      "net_revenue_mean": 239654922.6823899,
+      "net_revenue_std": 0.0,
+      "interventions_mean": 6442.0,
+      "interventions_std": 0.0,
+      "interventions_ex_mandatory_mean": 6442.0,
+      "interventions_ex_mandatory_std": 0.0,
+      "mandatory_escalation_count_mean": 0.0,
+      "mandatory_escalation_count_std": 0.0,
+      "uir_mean": 0.39764868603042874,
+      "uir_std": 0.0,
+      "wasted_silent_rate_mean": 0.0,
+      "wasted_silent_rate_std": 0.0,
+      "contacts_per_recovery_mean": 0.7204783258594918,
+      "contacts_per_recovery_std": 0.0
+    },
+    "smart_dunning": {
+      "n_mean": 3000.0,
+      "n_std": 0.0,
+      "recovered_mean": 2014.0,
+      "recovered_std": 0.0,
+      "recovery_rate_mean": 0.6713333333333333,
+      "recovery_rate_std": 0.0,
+      "gross_revenue_mean": 236714282.51999998,
+      "gross_revenue_std": 0.0,
+      "net_revenue_mean": 236385982.02439255,
+      "net_revenue_std": 0.0,
+      "interventions_mean": 4704.0,
+      "interventions_std": 0.0,
+      "interventions_ex_mandatory_mean": 4704.0,
+      "interventions_ex_mandatory_std": 0.0,
+      "mandatory_escalation_count_mean": 0.0,
+      "mandatory_escalation_count_std": 0.0,
+      "uir_mean": 0.6248399487836107,
+      "uir_std": 0.0,
+      "wasted_silent_rate_mean": 0.0,
+      "wasted_silent_rate_std": 0.0,
+      "contacts_per_recovery_mean": 0.7755710029791459,
+      "contacts_per_recovery_std": 0.0
+    },
+    "autopilot": {
+      "n_mean": 3000.0,
+      "n_std": 0.0,
+      "recovered_mean": 2109.0,
+      "recovered_std": 0.0,
+      "recovery_rate_mean": 0.703,
+      "recovery_rate_std": 0.0,
+      "gross_revenue_mean": 261273282.44000012,
+      "gross_revenue_std": 0.0,
+      "net_revenue_mean": 261273282.44000012,
+      "net_revenue_std": 0.0,
+      "interventions_mean": 8816.0,
+      "interventions_std": 0.0,
+      "interventions_ex_mandatory_mean": 7222.0,
+      "interventions_ex_mandatory_std": 0.0,
+      "mandatory_escalation_count_mean": 1594.0,
+      "mandatory_escalation_count_std": 0.0,
+      "uir_mean": 0.0,
+      "uir_std": 0.0,
+      "wasted_silent_rate_mean": 0.0,
+      "wasted_silent_rate_std": 0.0,
+      "contacts_per_recovery_mean": 0.5206258890469416,
+      "contacts_per_recovery_std": 0.0
+    },
+    "oracle": {
+      "n_mean": 3000.0,
+      "n_std": 0.0,
+      "recovered_mean": 2558.0,
+      "recovered_std": 0.0,
+      "recovery_rate_mean": 0.8526666666666667,
+      "recovery_rate_std": 0.0,
+      "gross_revenue_mean": 310388247.0500002,
+      "gross_revenue_std": 0.0,
+      "net_revenue_mean": 310092323.27528286,
+      "net_revenue_std": 0.0,
+      "interventions_mean": 6220.0,
+      "interventions_std": 0.0,
+      "interventions_ex_mandatory_mean": 4642.0,
+      "interventions_ex_mandatory_std": 0.0,
+      "mandatory_escalation_count_mean": 1578.0,
+      "mandatory_escalation_count_std": 0.0,
+      "uir_mean": 0.0,
+      "uir_std": 0.0,
+      "wasted_silent_rate_mean": 0.0,
+      "wasted_silent_rate_std": 0.0,
+      "contacts_per_recovery_mean": 0.4284597341673182,
+      "contacts_per_recovery_std": 0.0
+    }
+  },
+  "per_pop": {
+    "rule_based": {
+      "insufficient_funds": {
+        "n": 720,
+        "recovery_rate_mean": 0.5458333333333333,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 41051234.4
+      },
+      "transient": {
+        "n": 660,
+        "recovery_rate_mean": 0.8848484848484849,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 74150254.31999998
+      },
+      "non_recoverable": {
+        "n": 420,
+        "recovery_rate_mean": 0.0,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 0.0
+      },
+      "auth_required": {
+        "n": 390,
+        "recovery_rate_mean": 0.9641025641025641,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 40846403.060000025
+      },
+      "expired_card": {
+        "n": 330,
+        "recovery_rate_mean": 0.9696969696969697,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 42965692.83000001
+      },
+      "regional_degradation": {
+        "n": 240,
+        "recovery_rate_mean": 0.8166666666666667,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 25509562.729999997
+      },
+      "ambiguous": {
+        "n": 240,
+        "recovery_rate_mean": 0.575,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 15746219.839999998
+      }
+    },
+    "smart_dunning": {
+      "insufficient_funds": {
+        "n": 720,
+        "recovery_rate_mean": 0.8958333333333334,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 70678445.05999999
+      },
+      "transient": {
+        "n": 660,
+        "recovery_rate_mean": 0.896969696969697,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 71400950.67999998
+      },
+      "non_recoverable": {
+        "n": 420,
+        "recovery_rate_mean": 0.0,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 0.0
+      },
+      "auth_required": {
+        "n": 390,
+        "recovery_rate_mean": 0.7538461538461538,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 34225203.85000002
+      },
+      "expired_card": {
+        "n": 330,
+        "recovery_rate_mean": 0.6,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 27803510.010000017
+      },
+      "regional_degradation": {
+        "n": 240,
+        "recovery_rate_mean": 0.775,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 21597879.649999995
+      },
+      "ambiguous": {
+        "n": 240,
+        "recovery_rate_mean": 0.4125,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 11008293.269999998
+      }
+    },
+    "autopilot": {
+      "insufficient_funds": {
+        "n": 720,
+        "recovery_rate_mean": 0.7291666666666666,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 61727382.06000006
+      },
+      "transient": {
+        "n": 660,
+        "recovery_rate_mean": 0.9227272727272727,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 77885614.18999998
+      },
+      "non_recoverable": {
+        "n": 420,
+        "recovery_rate_mean": 0.07857142857142857,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 5505069.07
+      },
+      "auth_required": {
+        "n": 390,
+        "recovery_rate_mean": 0.8871794871794871,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 37751414.400000036
+      },
+      "expired_card": {
+        "n": 330,
+        "recovery_rate_mean": 0.7575757575757576,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 39471485.850000024
+      },
+      "regional_degradation": {
+        "n": 240,
+        "recovery_rate_mean": 0.8666666666666667,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 22767181.919999994
+      },
+      "ambiguous": {
+        "n": 240,
+        "recovery_rate_mean": 0.575,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 16165134.95
+      }
+    },
+    "oracle": {
+      "insufficient_funds": {
+        "n": 720,
+        "recovery_rate_mean": 0.9972222222222222,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 78888369.2700001
+      },
+      "transient": {
+        "n": 660,
+        "recovery_rate_mean": 0.9924242424242424,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 82714874.63000003
+      },
+      "non_recoverable": {
+        "n": 420,
+        "recovery_rate_mean": 0.12142857142857143,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 9956081.589999998
+      },
+      "auth_required": {
+        "n": 390,
+        "recovery_rate_mean": 0.9461538461538461,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 41253927.16000003
+      },
+      "expired_card": {
+        "n": 330,
+        "recovery_rate_mean": 0.9727272727272728,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 44806747.66000002
+      },
+      "regional_degradation": {
+        "n": 240,
+        "recovery_rate_mean": 1.0,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 27718477.7
+      },
+      "ambiguous": {
+        "n": 240,
+        "recovery_rate_mean": 0.85,
+        "recovery_rate_std": 0.0,
+        "gross_revenue_mean": 25049769.04
+      }
+    }
+  }
+}
