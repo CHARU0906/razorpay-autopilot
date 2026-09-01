@@ -1,0 +1,108 @@
+# Phase 1 simulator config. Mix and incidents are locked by SPEC.md D2 / §4.
+# Do not change shares without a new decisions-log ID.
+
+spec_version: "phase0-locked-2026-08-22"
+n_episodes: 3000
+horizon_h: 336          # 14 days
+max_actions: 6
+
+# D4 seed bands (disjoint). Seed is a CLI param; default eval seed is 1.
+eval_seed_band: [1, 20]
+train_seed_band: [1000, 1019]
+
+# D2 — proposed default mix, approved.
+population_mix:
+  insufficient_funds: 0.24    # 720 @ 3000
+  transient: 0.22             # 660
+  non_recoverable: 0.14       # 420
+  auth_required: 0.13         # 390
+  expired_card: 0.11          # 330
+  regional_degradation: 0.08  # 240 → 3 incidents × 80
+  ambiguous: 0.08             # 240
+
+# D3 — revenue reporting policy recorded on every run.
+revenue:
+  headline: gross
+  adjacent_column: net
+  mdr_deducted: false
+  irpi_basis: gross
+  net_irpi: secondary
+
+# Fixed FX (SPEC S2). No live quotes.
+fx_to_inr:
+  INR: 1.0
+  USD: 83.0
+  AED: 22.65
+  SGD: 62.0
+
+sim_epoch: "2026-01-01T00:00:00Z"
+
+# §4.1 correlated incidents. regional_degradation (n=240) is partitioned 80/80/80.
+incidents:
+  INC-1:
+    n_episodes: 80
+    cohort:
+      country: IN
+      card_network: rupay
+      issuer_bank_code: HDFC
+    window_h: 18
+    start_sim_hour: 240.0
+    trajectory:
+      - {offset_h: 0.0, success_rate: 0.94}
+      - {offset_h: 4.5, success_rate: 0.91}
+      - {offset_h: 9.0, success_rate: 0.87}
+      - {offset_h: 13.5, success_rate: 0.82}
+    right_answer: hold_for_incident
+  INC-2:
+    n_episodes: 80
+    cohort:
+      acquirer_route_id: route_b
+      is_cross_border: true
+    window_h: 12
+    start_sim_hour: 300.0
+    trajectory:
+      - {offset_h: 0.0, success_rate: 0.96}
+      - {offset_h: 4.0, success_rate: 0.90}
+      - {offset_h: 8.0, success_rate: 0.84}
+    right_answer: retry_alternate_route
+  INC-3:
+    n_episodes: 80
+    cohort:
+      payment_method: upi_autopay
+      issuer_bank_code: PAYTM
+    window_h: 24
+    start_sim_hour: 360.0
+    trajectory:
+      - {offset_h: 0.0, success_rate: 0.93}
+      - {offset_h: 6.0, success_rate: 0.89}
+      - {offset_h: 12.0, success_rate: 0.85}
+      - {offset_h: 18.0, success_rate: 0.88}
+    right_answer: hold_for_incident
+
+# Constants used only to fill GT Oracle fields (optimal_action / expected revenue).
+# Full Strategist costs.yaml is a Phase 3 sign-off item — not that file.
+oracle:
+  rho_daily: 0.002
+  gateway_retry_fee_inr: 0.50
+  alternate_route_fee_inr: 0.80
+  hold_fee_inr: 0.20
+  dunning_unit_cost_inr: 0.35
+  link_unit_cost_inr: 1.20
+  escalate_ops_cost_inr: 85.0
+  risk_silent_inr: 2.0
+  risk_visible_inr: 8.0
+  risk_escalate_inr: 5.0
+  churn_increment:
+    stop: 0.0
+    retry_1h: 0.0
+    retry_6h: 0.0
+    retry_24h: 0.0
+    retry_72h: 0.0
+    retry_7d: 0.0
+    retry_alternate_route: 0.0
+    hold_for_incident: 0.0
+    send_dunning_notification: 0.002
+    send_recovery_link: 0.008
+    request_reauth: 0.010
+    request_new_payment_method: 0.025
+    escalate_to_merchant: 0.0

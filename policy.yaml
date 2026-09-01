@@ -1,0 +1,44 @@
+# policy.yaml — Autopilot autonomy-tier thresholds (SPEC §5, §6, Phase 3).
+# All monetary thresholds in INR. Configurable without code changes.
+#
+# Tiers:
+#   automatic       : Autopilot executes without approval
+#   requires-approval: Queued for human review before execution
+#   requires-human  : Always routed to ops; never automated
+
+autonomy:
+  # Amount above which all customer-visible actions require approval
+  high_value_inr: 15000.0
+
+  # Risk score above which Autopilot escalates rather than executing
+  high_risk_score: 0.85
+
+  # Max re-plan attempts per episode before forcing escalate_to_merchant
+  max_replan_attempts: 3
+
+  # Max total actions per episode (mirrors SPEC §4.2 hard cap)
+  max_actions: 6
+
+  # Actions that always require human routing regardless of amount/risk
+  always_human:
+    - escalate_to_merchant
+
+  # Actions that require approval if amount > high_value_inr
+  approval_if_high_value:
+    - send_recovery_link
+    - request_reauth
+    - request_new_payment_method
+
+  # Failure codes that immediately gate to requires-human
+  human_failure_codes:
+    - stolen_or_lost_card
+    - risk_blocked
+
+  # Minimum expected utility (INR) for Autopilot to act at all; below this → stop
+  min_eu_to_act: 0.0
+
+  # Minimum transaction amount (INR) for escalate_to_merchant to be eligible.
+  # Derived from: C_floor(90 INR) / (P95_gt_non_recoverable(0.0384) * discount)
+  # = 2341.82 INR, rounded up to 2500.  Below this the 90 INR cost floor cannot
+  # be recovered even under the most optimistic GT draw for non_recoverable episodes.
+  min_amount_for_escalate_inr: 2500.0

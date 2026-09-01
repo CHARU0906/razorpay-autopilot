@@ -1,0 +1,62 @@
+{
+  "regime_a": {
+    "regime": "Regime A (Homogeneous GT)",
+    "n_seeds": 10,
+    "lift_vs_sd": {
+      "mean_lift_pct": 13.93,
+      "ci_95_lo": 11.32,
+      "ci_95_hi": 16.22,
+      "paired_t_test": {
+        "t_stat": 11.0499,
+        "p_value": 1.5496745107322302e-06
+      },
+      "wilcoxon_signed_rank": {
+        "w_stat": 0.0,
+        "p_value": 0.001953125
+      }
+    },
+    "lift_vs_rb": {
+      "mean_lift_pct": -4.5,
+      "ci_95_lo": -5.65,
+      "ci_95_hi": -3.46,
+      "paired_t_test": {
+        "t_stat": -7.4052,
+        "p_value": 4.08075717098154e-05
+      },
+      "wilcoxon_signed_rank": {
+        "w_stat": 0.0,
+        "p_value": 0.001953125
+      }
+    }
+  },
+  "regime_b": {
+    "regime": "Regime B (Heterogeneous Multi-Modal GT)",
+    "n_seeds": 10,
+    "lift_vs_sd": {
+      "mean_lift_pct": 8.24,
+      "ci_95_lo": 5.56,
+      "ci_95_hi": 10.57,
+      "paired_t_test": {
+        "t_stat": 6.4027,
+        "p_value": 0.00012487143111855956
+      },
+      "wilcoxon_signed_rank": {
+        "w_stat": 0.0,
+        "p_value": 0.001953125
+      }
+    },
+    "lift_vs_rb": {
+      "mean_lift_pct": 9.51,
+      "ci_95_lo": 6.38,
+      "ci_95_hi": 11.73,
+      "paired_t_test": {
+        "t_stat": 7.0191,
+        "p_value": 6.193212053187137e-05
+      },
+      "wilcoxon_signed_rank": {
+        "w_stat": 1.0,
+        "p_value": 0.00390625
+      }
+    }
+  }
+}

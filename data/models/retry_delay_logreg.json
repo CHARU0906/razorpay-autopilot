@@ -1,0 +1,20 @@
+{
+  "n": 3000,
+  "label_counts": {
+    "retry_24h": 218,
+    "retry_1h": 781,
+    "retry_7d": 578,
+    "stop": 925,
+    "retry_6h": 241,
+    "retry_72h": 257
+  },
+  "classes": [
+    "retry_1h",
+    "retry_24h",
+    "retry_6h",
+    "retry_72h",
+    "retry_7d",
+    "stop"
+  ],
+  "train_note": "Fit on training-band seeds only. Labels = argmax retry delay in GT p(a)."
+}

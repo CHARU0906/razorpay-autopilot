@@ -1,0 +1,100 @@
+# costs.yaml — INR cost constants for the Strategist utility function (SPEC §6.1).
+# All monetary values in Indian Rupees (INR).
+# Sign-off required before changing any constant (per spec §6.1 promise).
+#
+# Sources / justifications:
+#   gateway_retry_fee_inr   : ≈₹0.50 per retry attempt; mirrors sim_config.yaml oracle block
+#   alternate_route_fee_inr : higher routing fee for cross-network switch; mirrors sim_config
+#   hold_fee_inr            : minimal deferred-retry overhead; mirrors sim_config
+#   dunning_unit_cost_inr   : bulk SMS/email at ≈₹0.35/message; mirrors sim_config
+#   link_unit_cost_inr      : recovery link generation + delivery ≈₹1.20; mirrors sim_config
+#   escalate_ops_cost_inr   : 15 min ops agent @ ₹340/hr loaded rate ≈₹85; mirrors sim_config
+#   risk_silent_inr         : residual chargeback risk on silent retries ≈₹2; mirrors sim_config
+#   risk_visible_inr        : higher adverse-event exposure on customer-visible actions ≈₹8
+#   risk_escalate_inr       : compliance/ops overhead on escalations ≈₹5; mirrors sim_config
+#   rho_daily               : daily time-value discount on recovery revenue (0.2%/day)
+
+intervention:
+  gateway_retry_fee_inr: 0.50
+  alternate_route_fee_inr: 0.80
+  hold_fee_inr: 0.20
+  dunning_unit_cost_inr: 0.35
+  link_unit_cost_inr: 1.20
+  escalate_ops_cost_inr: 85.0
+
+risk:
+  risk_silent_inr: 2.0
+  risk_visible_inr: 8.0
+  risk_escalate_inr: 5.0
+
+revenue:
+  rho_daily: 0.002
+
+# Churn-increment table: fraction of LTV at risk per action.
+# Zero for zero-friction actions. Source: calibrated against training-seed outcomes.
+churn_increment:
+  stop: 0.0
+  retry_1h: 0.0
+  retry_6h: 0.0
+  retry_24h: 0.0
+  retry_72h: 0.0
+  retry_7d: 0.0
+  retry_alternate_route: 0.0
+  hold_for_incident: 0.0
+  send_dunning_notification: 0.002
+  send_recovery_link: 0.008
+  request_reauth: 0.010
+  request_new_payment_method: 0.025
+  escalate_to_merchant: 0.0
+
+# Per-class time profile for the Strategist's time_decay correction.
+# Mirrors sim/generate.py time_profile() — optimal_delay_h and decay_lambda per class.
+# Used by _p_success to apply the same time_decay the Action Agent will execute.
+# Source: sim/generate.py class_peak and lam tables — do not change without updating
+# the generator's time_profile() function simultaneously.
+time_profile:
+  transient:
+    optimal_delay_h: 1.0
+    decay_lambda: 0.35
+  insufficient_funds:
+    optimal_delay_h: 72.0
+    decay_lambda: 0.18
+  auth_required:
+    optimal_delay_h: 6.0
+    decay_lambda: 0.25
+  expired_card:
+    optimal_delay_h: 12.0
+    decay_lambda: 0.20
+  regional_degradation:
+    optimal_delay_h: 1.0
+    decay_lambda: 0.08
+  non_recoverable:
+    optimal_delay_h: 0.0
+    decay_lambda: 0.40
+  ambiguous:
+    optimal_delay_h: 6.0
+    decay_lambda: 0.25
+# Retry-delay actions use the shared fitted model (retry_delay_logreg).
+# These priors are calibrated on training seeds; never updated from eval seeds.
+# Per-true-class priors are mid-points of the generation ranges in sim/generate.py.
+action_priors:
+  # Silent retries — Strategist defers to model; these are fallback only
+  retry_1h: 0.35
+  retry_6h: 0.30
+  retry_24h: 0.28
+  retry_72h: 0.22
+  retry_7d: 0.18
+  # Alternate route — elevated vs same-route retry; strong for degradation
+  retry_alternate_route: 0.55
+  # Hold — only useful during a live degradation event; without detection, low prior
+  hold_for_incident:
+    default: 0.12
+    incident_detected: 0.85
+  # Customer-visible
+  send_dunning_notification: 0.38
+  send_recovery_link: 0.48
+  request_reauth: 0.72
+  request_new_payment_method: 0.65
+  # Escalate — high success but high cost
+  escalate_to_merchant: 0.28
+  stop: 0.0

@@ -1,0 +1,50 @@
+[
+  {
+    "ablation": "Full Autopilot (Canonical Baseline)",
+    "code": "full",
+    "recovery_rate_pct": 73.67,
+    "gross_revenue_inr": 254504103.0,
+    "lift_vs_smart_dunning_pct": 14.32,
+    "delta_vs_full_pct": 0.0
+  },
+  {
+    "ablation": "1. Without Degradation Detection (6b)",
+    "code": "no_detection",
+    "recovery_rate_pct": 73.35,
+    "gross_revenue_inr": 252618940.0,
+    "lift_vs_smart_dunning_pct": 13.47,
+    "delta_vs_full_pct": -0.74
+  },
+  {
+    "ablation": "2. Without Horizon Policy EU (Single-shot EU)",
+    "code": "no_policy_eu",
+    "recovery_rate_pct": 70.07,
+    "gross_revenue_inr": 237456952.0,
+    "lift_vs_smart_dunning_pct": 6.66,
+    "delta_vs_full_pct": -6.7
+  },
+  {
+    "ablation": "3. Without Time-Decay Calibration",
+    "code": "no_time_decay",
+    "recovery_rate_pct": 71.36,
+    "gross_revenue_inr": 247702777.0,
+    "lift_vs_smart_dunning_pct": 11.26,
+    "delta_vs_full_pct": -2.67
+  },
+  {
+    "ablation": "4. Without Class-Specific Calibrated Priors",
+    "code": "flat_priors",
+    "recovery_rate_pct": 73.67,
+    "gross_revenue_inr": 254504103.0,
+    "lift_vs_smart_dunning_pct": 14.32,
+    "delta_vs_full_pct": 0.0
+  },
+  {
+    "ablation": "5. Without Policy Engine Autonomy Tiers",
+    "code": "unconstrained_autonomy",
+    "recovery_rate_pct": 73.67,
+    "gross_revenue_inr": 254504103.0,
+    "lift_vs_smart_dunning_pct": 14.32,
+    "delta_vs_full_pct": 0.0
+  }
+]

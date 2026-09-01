@@ -1,0 +1,138 @@
+{
+  "config_sha256": "9c661c92fcc75d682984ea2ee882d1274c9a45d2c5be41709ca34ff5efff8303",
+  "content_hash": "9fd4aa7f02f0d362780b0d2014b1feba61107baff638455ef057b139df69ebf2",
+  "created_at": "2026-08-22T18:17:17Z",
+  "decisions": [
+    "D1",
+    "D2",
+    "D3",
+    "D4"
+  ],
+  "episodes_sha256": "2b05b8e62081ad4d66c6fcb9f9923083f5c7811865b9a80fb62cae174e19c81f",
+  "eval_seed_band": [
+    1,
+    20
+  ],
+  "fx_to_inr": {
+    "AED": 22.65,
+    "INR": 1.0,
+    "SGD": 62.0,
+    "USD": 83.0
+  },
+  "ground_truth_sha256": "ec66f1c24cbf24e3e95a92d7350267e517b6e38f8f3463dcdbc3b0943026f138",
+  "horizon_h": 336,
+  "incidents": {
+    "INC-1": {
+      "cohort": {
+        "card_network": "rupay",
+        "country": "IN",
+        "issuer_bank_code": "HDFC"
+      },
+      "n": 80,
+      "start_sim_hour": 240.0,
+      "trajectory": [
+        {
+          "offset_h": 0.0,
+          "success_rate": 0.94
+        },
+        {
+          "offset_h": 4.5,
+          "success_rate": 0.91
+        },
+        {
+          "offset_h": 9.0,
+          "success_rate": 0.87
+        },
+        {
+          "offset_h": 13.5,
+          "success_rate": 0.82
+        }
+      ],
+      "window_h": 18
+    },
+    "INC-2": {
+      "cohort": {
+        "acquirer_route_id": "route_b",
+        "is_cross_border": true
+      },
+      "n": 80,
+      "start_sim_hour": 300.0,
+      "trajectory": [
+        {
+          "offset_h": 0.0,
+          "success_rate": 0.96
+        },
+        {
+          "offset_h": 4.0,
+          "success_rate": 0.9
+        },
+        {
+          "offset_h": 8.0,
+          "success_rate": 0.84
+        }
+      ],
+      "window_h": 12
+    },
+    "INC-3": {
+      "cohort": {
+        "issuer_bank_code": "PAYTM",
+        "payment_method": "upi_autopay"
+      },
+      "n": 80,
+      "start_sim_hour": 360.0,
+      "trajectory": [
+        {
+          "offset_h": 0.0,
+          "success_rate": 0.93
+        },
+        {
+          "offset_h": 6.0,
+          "success_rate": 0.89
+        },
+        {
+          "offset_h": 12.0,
+          "success_rate": 0.85
+        },
+        {
+          "offset_h": 18.0,
+          "success_rate": 0.88
+        }
+      ],
+      "window_h": 24
+    }
+  },
+  "max_actions": 6,
+  "mix": {
+    "ambiguous": 0.08,
+    "auth_required": 0.13,
+    "expired_card": 0.11,
+    "insufficient_funds": 0.24,
+    "non_recoverable": 0.14,
+    "regional_degradation": 0.08,
+    "transient": 0.22
+  },
+  "n_episodes": 3000,
+  "population_counts": {
+    "ambiguous": 240,
+    "auth_required": 390,
+    "expired_card": 330,
+    "insufficient_funds": 720,
+    "non_recoverable": 420,
+    "regional_degradation": 240,
+    "transient": 660
+  },
+  "revenue": {
+    "adjacent_column": "net",
+    "headline": "gross",
+    "irpi_basis": "gross",
+    "mdr_deducted": false,
+    "net_irpi": "secondary"
+  },
+  "run_id": "run_seed1_c548623a147d",
+  "seed": 1,
+  "spec_version": "phase0-locked-2026-08-22",
+  "train_seed_band": [
+    1000,
+    1019
+  ]
+}
