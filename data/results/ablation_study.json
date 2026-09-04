@@ -4,7 +4,7 @@
     "code": "full",
     "recovery_rate_pct": 73.67,
     "gross_revenue_inr": 254504103.0,
-    "lift_vs_smart_dunning_pct": 14.32,
+    "lift_vs_smart_dunning_pct": 15.08,
     "delta_vs_full_pct": 0.0
   },
   {
@@ -12,7 +12,7 @@
     "code": "no_detection",
     "recovery_rate_pct": 73.35,
     "gross_revenue_inr": 252618940.0,
-    "lift_vs_smart_dunning_pct": 13.47,
+    "lift_vs_smart_dunning_pct": 14.23,
     "delta_vs_full_pct": -0.74
   },
   {
@@ -20,7 +20,7 @@
     "code": "no_policy_eu",
     "recovery_rate_pct": 70.07,
     "gross_revenue_inr": 237456952.0,
-    "lift_vs_smart_dunning_pct": 6.66,
+    "lift_vs_smart_dunning_pct": 7.38,
     "delta_vs_full_pct": -6.7
   },
   {
@@ -28,7 +28,7 @@
     "code": "no_time_decay",
     "recovery_rate_pct": 71.36,
     "gross_revenue_inr": 247702777.0,
-    "lift_vs_smart_dunning_pct": 11.26,
+    "lift_vs_smart_dunning_pct": 12.01,
     "delta_vs_full_pct": -2.67
   },
   {
@@ -36,7 +36,7 @@
     "code": "flat_priors",
     "recovery_rate_pct": 73.67,
     "gross_revenue_inr": 254504103.0,
-    "lift_vs_smart_dunning_pct": 14.32,
+    "lift_vs_smart_dunning_pct": 15.08,
     "delta_vs_full_pct": 0.0
   },
   {
@@ -44,7 +44,7 @@
     "code": "unconstrained_autonomy",
     "recovery_rate_pct": 73.67,
     "gross_revenue_inr": 254504103.0,
-    "lift_vs_smart_dunning_pct": 14.32,
+    "lift_vs_smart_dunning_pct": 15.08,
     "delta_vs_full_pct": 0.0
   }
 ]

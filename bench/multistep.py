@@ -18,6 +18,7 @@ import random
 import tempfile
 import time
 import statistics
+import zlib
 from collections import defaultdict
 from pathlib import Path
 
@@ -296,7 +297,7 @@ def run_seed(seed: int, strategy_names: list[str], cfg: dict,
         zero_frict  = bool(gt.get("zero_friction_recovery_possible", False))
 
         for name in strategy_names:
-            ep_rng = random.Random(rng_base + seed * 31337 + ep_idx * 17 + hash(name) % 1000)
+            ep_rng = random.Random(rng_base + seed * 31337 + ep_idx * 17 + zlib.crc32(name.encode()) % 1000)
 
             if name in ("autopilot", "autopilot_no_detection"):
                 res = run_autopilot_episode(strats[name], obs, gt, rng=ep_rng)

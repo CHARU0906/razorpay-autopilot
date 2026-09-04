@@ -6,13 +6,20 @@ Endpoints:
     POST /bench/compare?seed=N        Run Regime A vs Regime B for one seed, return comparison
     GET  /health                      Sanity check
 
+    --- Razorpay test-mode integration endpoints (Priority 1) ---
+    POST /razorpay/webhook            Receive payment.failed webhook, run EU pipeline, optionally
+                                      create a real Razorpay test-mode Payment Link
+    GET  /razorpay/payment/{id}       Fetch a real payment entity from Razorpay test mode
+    GET  /razorpay/status             Report whether live test-mode credentials are configured
+
 Run:
-    pip install fastapi uvicorn
+    pip install fastapi uvicorn razorpay
     python -m api.server
 
 CORS is open to localhost:5173 (Vite dev server).
-All execution uses MockRetryAPI / MockOpsQueue — no live Razorpay APIs.
-All results are from the synthetic simulator.
+Silent-retry actions (retry_1h, retry_72h, etc.) use MockRetryAPI — no real retry
+endpoint exists in Razorpay test mode. The send_recovery_link action uses the real
+Razorpay Payment Links API when RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are configured.
 """
 
 from __future__ import annotations
@@ -28,7 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 try:
-    from fastapi import FastAPI, HTTPException, Query
+    from fastapi import FastAPI, HTTPException, Query, Request, Header
     from fastapi.middleware.cors import CORSMiddleware
     import uvicorn
 except ImportError:
@@ -556,6 +563,175 @@ def list_episodes(
         if len(results) >= limit:
             break
     return {"episodes": results, "total_loaded": len(_episodes_by_id)}
+
+
+# ── Razorpay integration endpoints (Priority 1) ───────────────────────────────
+
+@app.get("/razorpay/status")
+def razorpay_status():
+    """
+    Report whether live Razorpay test-mode credentials are configured.
+    Never echoes the credentials — reports only whether they are present and valid-format.
+    """
+    from razorpay_integration.client import is_live, _get_credentials
+    key_id, _ = _get_credentials()
+    return {
+        "live_api_enabled": is_live(),
+        "key_id_prefix": key_id[:12] + "..." if key_id else None,
+        "note": (
+            "Real Razorpay test-mode credentials configured. send_recovery_link will use live API."
+            if is_live()
+            else (
+                "No credentials configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET "
+                "(rzp_test_... keys from Razorpay dashboard) to enable live API calls. "
+                "send_recovery_link will use MockRecoveryLinkAPI until then."
+            )
+        ),
+        "what_is_live": [
+            "POST /razorpay/webhook — receives real payment.failed events from Razorpay",
+            "GET  /razorpay/payment/{id} — fetches real payment entities from Razorpay",
+            "send_recovery_link action — creates real Payment Links via Razorpay API (30 test limit)",
+        ],
+        "what_is_mock": [
+            "retry_1h / retry_6h / retry_24h / retry_72h / retry_7d — no real retry endpoint in Razorpay",
+            "retry_alternate_route — no real route-switching endpoint",
+            "hold_for_incident — no real API equivalent",
+            "P(success|a) estimators — fit on synthetic training data, not real outcomes",
+            "EU cost constants (costs.yaml) — illustrative values, not validated on real CLV data",
+        ],
+    }
+
+
+@app.post("/razorpay/webhook")
+async def razorpay_webhook(
+    request: Request,
+    x_razorpay_signature: str = Header(default=None, alias="X-Razorpay-Signature"),
+    x_razorpay_event: str = Header(default=None, alias="X-Razorpay-Event"),
+):
+    """
+    Receive a Razorpay payment.failed webhook, validate the signature (if webhook
+    secret is configured), translate the payload into an observed episode, run the
+    full EU pipeline, and optionally execute a real send_recovery_link API call.
+
+    Setup for test-mode webhooks:
+    1. Create a test-mode webhook at: https://dashboard.razorpay.com/app/webhooks
+    2. Set the URL to: https://<your-tunnel>/razorpay/webhook
+       (use zrok or similar to expose localhost:8000)
+    3. Subscribe to: payment.failed
+    4. Set RAZORPAY_WEBHOOK_SECRET env var to your webhook secret
+    5. Trigger a failure using test card 4100 2800 0008 0001 (insufficient_funds)
+
+    The X-Razorpay-Signature header is validated when RAZORPAY_WEBHOOK_SECRET is set.
+    Without the secret, validation is skipped (safe for demo/development use).
+
+    Returns the full EU pipeline trace for every processed event.
+    """
+    import os
+    import json as json_mod
+
+    body = await request.body()
+
+    # Validate webhook signature if secret is configured
+    webhook_secret = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "").strip()
+    if webhook_secret and x_razorpay_signature:
+        from razorpay_integration.client import validate_webhook_signature
+        if not validate_webhook_signature(body, x_razorpay_signature, webhook_secret):
+            raise HTTPException(status_code=401, detail="Webhook signature validation failed")
+    elif webhook_secret and not x_razorpay_signature:
+        raise HTTPException(status_code=401, detail="X-Razorpay-Signature header missing")
+    # If no webhook_secret configured, proceed without validation (development mode)
+
+    try:
+        payload = json_mod.loads(body)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON in webhook body")
+
+    # Determine event type from header or payload
+    event_type = x_razorpay_event or payload.get("event", "unknown")
+
+    from razorpay_integration.webhook_handler import process_webhook
+    result = process_webhook(payload, event_type=event_type)
+
+    return {
+        "received": True,
+        "event_type": event_type,
+        "payment_id": result.payment_id,
+        "failure_code": result.failure_code,
+        "inferred_class": result.inferred_class,
+        "recommended_action": result.recommended_action,
+        "policy_tier": result.policy_tier,
+        "eu_winner": result.eu_winner,
+        "payment_link_url": result.payment_link_url,
+        "payment_link_is_live": result.payment_link_is_live,
+        "missing_fields": result.missing_fields,
+        "pipeline_trace": result.pipeline_trace,
+        "simulation_note": result.simulation_note,
+    }
+
+
+@app.get("/razorpay/payment/{payment_id}")
+def razorpay_fetch_payment(payment_id: str):
+    """
+    Fetch a real payment entity from Razorpay test mode and run it through
+    the EU pipeline.
+
+    This endpoint demonstrates end-to-end integration: a real Razorpay payment
+    entity (with real error_code, error_description, error_source fields) is
+    translated into our observed-episode format and scored by the Strategist.
+
+    Use a test-mode payment_id (pay_...) from the Razorpay dashboard.
+    Returns 404 if RAZORPAY credentials are not configured.
+    """
+    from razorpay_integration.client import fetch_payment, is_live
+
+    if not is_live():
+        return {
+            "live_api_enabled": False,
+            "note": (
+                "Configure RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to fetch real payment entities. "
+                "Use rzp_test_... keys from https://dashboard.razorpay.com/app/keys"
+            ),
+        }
+
+    fetch_result = fetch_payment(payment_id)
+    if not fetch_result.success:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Payment {payment_id} not found or API error: {fetch_result.error}",
+        )
+
+    # Build a minimal webhook-style payload and process it
+    synthetic_payload = {
+        "event": "payment.failed",
+        "payload": {
+            "payment": {
+                "entity": fetch_result.raw_response or {}
+            }
+        }
+    }
+    from razorpay_integration.webhook_handler import process_webhook
+    result = process_webhook(synthetic_payload, event_type="payment.failed")
+
+    return {
+        "payment_id": payment_id,
+        "razorpay_status": fetch_result.status,
+        "razorpay_error_code": fetch_result.error_code,
+        "razorpay_error_description": fetch_result.error_description,
+        "razorpay_error_source": fetch_result.error_source,
+        "razorpay_error_reason": fetch_result.error_reason,
+        "amount_inr": fetch_result.amount_paise / 100.0,
+        "is_live_api": True,
+        "autopilot_decision": {
+            "failure_code_mapped": result.failure_code,
+            "inferred_class": result.inferred_class,
+            "recommended_action": result.recommended_action,
+            "policy_tier": result.policy_tier,
+            "eu_winner": result.eu_winner,
+            "pipeline_trace": result.pipeline_trace,
+        },
+        "missing_fields": result.missing_fields,
+        "simulation_note": result.simulation_note,
+    }
 
 
 if __name__ == "__main__":

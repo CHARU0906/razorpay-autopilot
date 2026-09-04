@@ -153,6 +153,71 @@ export const BAD_RULE_EPISODE = {
 }
 
 /**
+ * Promise-to-Pay walkthrough data — verified from bench/test_promise_tracker.py (3/3 passing)
+ * and from actual Strategist EU scores on ep_1_8 (monthly IF subscriber).
+ *
+ * EU scores sourced from running score_all_actions on ep_1_8 with replan state
+ * (after retry_72h failure, attempt_k=1).
+ */
+export const P2P_EPISODE = {
+  episode_id: 'ep_1_8',
+  failure_code: 'insufficient_funds',
+  failure_message: 'Insufficient funds in account',
+  amount_inr: 201316.5,
+  billing_cycle: 'monthly',
+  avg_days_between_txns: 39.94,
+  lifetime_value_inr: 34095.89,
+  email_engagement_score: 0.347,
+  // EU scores after retry_72h failed (replan #1 state)
+  // Source: score_all_actions(ep_1_8, state={attempt_k=1, replan_count=1})
+  strategist_top3: [
+    {
+      action_id: 'retry_7d',
+      eu: 94541.90,
+      p_success: 0.476,
+      c_friction: 0.00,
+      p_source: 'model-scored',
+      winner: true,
+    },
+    {
+      action_id: 'send_recovery_link',
+      eu: 83771.73,
+      p_success: 0.418,
+      c_friction: 232.75,
+      p_source: 'prior-scored',
+      winner: false,
+    },
+    {
+      action_id: 'send_dunning_notification',
+      eu: 66466.49,
+      p_success: 0.331,
+      c_friction: 58.19,
+      p_source: 'prior-scored',
+      winner: false,
+    },
+  ],
+  // Case A: fulfilled promise
+  case_a: {
+    action: 'log_promise_to_pay',
+    tool: 'MockPromiseAPI',
+    due_in_hours: 72.0,
+    channel: 'whatsapp',
+    outcome: 'FULFILLED',
+    log: '[ep_1_8] ✓ Promise-to-Pay FULFILLED on time (due_h=72.0h, attempt=1) — recovered',
+  },
+  // Case B: broken promise → replan
+  case_b: {
+    action: 'log_promise_to_pay',
+    tool: 'MockPromiseAPI',
+    due_in_hours: 48.0,
+    channel: 'sms',
+    outcome: 'BROKEN',
+    log: '[ep_1_8] ✗ Promise-to-Pay BROKEN (due date passed without settlement) — feeding back into replanning loop (replan #1)',
+    replan_state: { replan_count: 1, promise_broken: true },
+  },
+}
+
+/**
  * Phase 3 trace log entries for ep_1_34 — real output from autopilot.trace_episode.
  * These are verbatim from the Phase 3 single-episode trace.
  */
